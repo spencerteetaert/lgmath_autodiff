@@ -6,7 +6,7 @@ option(USE_AMENT "Use ament_cmake to build lgmath for ROS2." OFF)
 # Compiler setup
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-march=native -O3 -Wall -pedantic)
+add_compile_options(-O3 -Wall -pedantic)
 
 ## cmake flow (default)
 if (NOT USE_AMENT)
@@ -15,6 +15,7 @@ set(PROJECT_VERSION 1.1.0)
 
 # Find dependencies
 find_package(Eigen3 3.3.7 REQUIRED)
+find_package(autodiff)
 
 # Build library
 file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
@@ -25,6 +26,7 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+target_link_libraries(${PROJECT_NAME} autodiff::autodiff)
 
 # Install
 install(
