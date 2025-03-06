@@ -10,6 +10,11 @@
 
 #include <Eigen/Core>
 
+#if INCLUDE_AUTODIFF
+#include <autodiff/forward/real.hpp>
+#include <autodiff/forward/real/eigen.hpp>
+#endif
+
 namespace lgmath {
 
 /** Define various pi functions -- found from matlab w long precision */
@@ -54,6 +59,23 @@ bool nearEqualAxisAngle(Eigen::Matrix<double, 3, 1> aaxis1,
 /** \brief compares if lie algebra is near equal */
 bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
                      Eigen::Matrix<double, 6, 1> vec2, double tol = 1e-6);
+
+#if INCLUDE_AUTODIFF
+namespace diff {
+
+bool nearEqual(autodiff::real a, autodiff::real b, double tol);
+
+bool nearEqual(autodiff::MatrixXreal A, autodiff::MatrixXreal B, double tol);
+
+bool nearEqualAngle(autodiff::real radA, autodiff::real radB, double tol);
+
+bool nearEqualAxisAngle(autodiff::Vector3real aaxis1,
+                        autodiff::Vector3real aaxis2, double tol);
+
+bool nearEqualLieAlg(autodiff::VectorXreal vec1, autodiff::VectorXreal vec2,
+                     double tol);
+}  // namespace diff
+#endif // INCLUDE_AUTODIFF
 
 }  // namespace common
 }  // namespace lgmath

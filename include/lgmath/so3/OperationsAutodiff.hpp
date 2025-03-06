@@ -1,3 +1,4 @@
+#if INCLUDE_AUTODIFF
 /**
  * \file Operations.hpp
  * \brief Header file for the SO3 Lie Group math functions.
@@ -146,3 +147,4 @@ autodiff::Matrix3real vec2jacinv(const autodiff::Vector3real& aaxis_ba,
 }  // namespace diff
 }  // namespace so3
 }  // namespace lgmath
+#endif

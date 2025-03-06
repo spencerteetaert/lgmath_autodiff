@@ -1,3 +1,4 @@
+#if INCLUDE_AUTODIFF
 /**
  * \file Operations.cpp
  * \brief Implementation file for the SO3 Lie Group math functions.
@@ -6,6 +7,7 @@
  *
  * \author Sean Anderson
  */
+#include <lgmath/CommonMath.hpp>
 #include <lgmath/so3/OperationsAutodiff.hpp>
 
 #include <stdio.h>
@@ -28,7 +30,7 @@ autodiff::Matrix3real hat(const autodiff::Vector3real& vector) {
 }
 
 autodiff::Matrix3real vec2rot(const autodiff::Vector3real& aaxis_ba,
-                        unsigned int numTerms) {
+                              unsigned int numTerms) {
   // Get angle
   const autodiff::real phi_ba = aaxis_ba.norm();
 
@@ -63,8 +65,8 @@ autodiff::Matrix3real vec2rot(const autodiff::Vector3real& aaxis_ba,
   }
 }
 
-void vec2rot(const autodiff::Vector3real& aaxis_ba, autodiff::Matrix3real* out_C_ab,
-             autodiff::Matrix3real* out_J_ab) {
+void vec2rot(const autodiff::Vector3real& aaxis_ba,
+             autodiff::Matrix3real* out_C_ab, autodiff::Matrix3real* out_J_ab) {
   // Check pointers
   if (out_C_ab == NULL) {
     throw std::invalid_argument("Null pointer out_C_ab in vec2rot");
@@ -77,64 +79,84 @@ void vec2rot(const autodiff::Vector3real& aaxis_ba, autodiff::Matrix3real* out_C
   *out_J_ab = so3::diff::vec2jac(aaxis_ba);
 
   // Set rotation matrix
-  *out_C_ab = autodiff::Matrix3real::Identity() + so3::diff::hat(aaxis_ba) * (*out_J_ab);
-}
-
-autodiff::real fabs(const autodiff::real& val) {
-  return val < 0.0 ? -val : val;
+  *out_C_ab = autodiff::Matrix3real::Identity() +
+              so3::diff::hat(aaxis_ba) * (*out_J_ab);
 }
 
 autodiff::real clamp(const autodiff::real& val, const autodiff::real& min,
-               const autodiff::real& max) {
+                     const autodiff::real& max) {
   return val < min ? min : (val > max ? max : val);
 }
 
-autodiff::Vector3real rot2vec(const autodiff::Matrix3real& C_ab, const double eps) {
+autodiff::Vector3real rot2vec(const autodiff::Matrix3real& C_ab,
+                              const double eps) {
   // Get angle
-  const autodiff::real phi_ba = acos(clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
+  const autodiff::real phi_ba = acos(
+      clamp(0.5 * (C_ab.trace() - 1.0), -0.999999999999999, 0.999999999999999));
   const autodiff::real sinphi_ba = sin(phi_ba);
 
-  if (fabs(sinphi_ba) > eps) {
+  if (fabs(sinphi_ba.val()) > eps) {
     // General case, angle is NOT near 0, pi, or 2*pi
     autodiff::Vector3real axis;
     axis << C_ab(2, 1) - C_ab(1, 2), C_ab(0, 2) - C_ab(2, 0),
         C_ab(1, 0) - C_ab(0, 1);
     return (0.5 * phi_ba / sinphi_ba) * axis;
 
-  } else if (fabs(phi_ba) > eps) {
+  } else if (fabs(phi_ba.val()) > eps) {
+    // Angle is near pi or 2*pi
+    // ** Note with this method we do not know the sign of 'phi', however since
+    // we know phi is
+    //    close to pi or 2*pi, the sign is unimportant..
+
+    // Find the eigenvalues and eigenvectors
+    Eigen::SelfAdjointEigenSolver<autodiff::Matrix3real> eigenSolver(C_ab);
+
+    /*
+    Note: This requires a small change in the autodiff library. This comes from the fact that the Eigen eigensolver 
+    uses std functions that are not supported by autodiff. The type casting from real type to double is only supported 
+    explicitly. This edit allows for casting to double to be done implicitly, enabling use of std functions. 
+    
+    https://github.com/autodiff/autodiff/blob/b0a4feff5b2a61262e94305452ac53369fe35e75/autodiff/forward/real/real.hpp#L189 
+
+    The change is to swap out the conditional code block in real.hpp with: 
+    ----------------------------------------------------------------------------------------------------------------------
+    #if defined(AUTODIFF_ENABLE_IMPLICIT_CONVERSION_REAL) || defined(AUTODIFF_ENABLE_IMPLICIT_CONVERSION)
+      AUTODIFF_DEVICE_FUNC constexpr operator T() const { return static_cast<T>(m_data[0]); }
+    #endif
+    template<typename U, Requires<isArithmetic<U>> = true>
+    AUTODIFF_DEVICE_FUNC constexpr explicit operator U() const { return static_cast<U>(m_data[0]); }
+    ----------------------------------------------------------------------------------------------------------------------
+
+    This is untested and may break other functionality. 
+    */
+
+    // Try each eigenvalue
+    for (int i = 0; i < 3; i++) {
+      // Check if eigen value is near +1.0
+      if (fabs(eigenSolver.eigenvalues()[i].val() - 1.0) < 1e-6) {
+        // Get corresponding angle-axis
+        autodiff::Vector3real aaxis_ba =
+            phi_ba * eigenSolver.eigenvectors().col(i);
+        return aaxis_ba;
+      }
+    }
+
+    // Runtime error
     throw std::runtime_error(
-        "Rot2vec near pi or 2pi is not supported.");
-    // // Angle is near pi or 2*pi
-    // // ** Note with this method we do not know the sign of 'phi', however since
-    // // we know phi is
-    // //    close to pi or 2*pi, the sign is unimportant..
-
-    // // Find the eigenvalues and eigenvectors
-    // Eigen::SelfAdjointEigenSolver<autodiff::Matrix3real> eigenSolver(C_ab);
-
-    // // Try each eigenvalue
-    // for (int i = 0; i < 3; i++) {
-    //   // Check if eigen value is near +1.0
-    //   if (fabs(eigenSolver.eigenvalues()[i] - 1.0) < 1e-6) {
-    //     // Get corresponding angle-axis
-    //     autodiff::Vector3real aaxis_ba = phi_ba * eigenSolver.eigenvectors().col(i);
-    //     return aaxis_ba;
-    //   }
-    // }
-
-    // // Runtime error
-    // throw std::runtime_error(
-    //     "so3 logarithmic map failed to find an axis-angle, "
-    //     "angle was near pi, or 2*pi, but no eigenvalues were near 1");
-
+        "so3 logarithmic map failed to find an axis-angle, "
+        "angle was near pi, or 2*pi, but no eigenvalues were near 1");
   } else {
     // Angle is near zero
     return autodiff::Vector3real::Zero();
   }
 }
 
+void func(const autodiff::Matrix3real& R) {
+  Eigen::SelfAdjointEigenSolver<autodiff::Matrix3real> eigenSolver(R);
+}
+
 autodiff::Matrix3real vec2jac(const autodiff::Vector3real& aaxis_ba,
-                        unsigned int numTerms) {
+                              unsigned int numTerms) {
   // Get angle
   const autodiff::real phi_ba = aaxis_ba.norm();
   if (phi_ba < 1e-12) {
@@ -148,7 +170,8 @@ autodiff::Matrix3real vec2jac(const autodiff::Vector3real& aaxis_ba,
     const autodiff::real sinTerm = sin(phi_ba) / phi_ba;
     const autodiff::real cosTerm = (1.0 - cos(phi_ba)) / phi_ba;
     return sinTerm * autodiff::Matrix3real::Identity() +
-           (1.0 - sinTerm) * axis * axis.transpose() + cosTerm * so3::diff::hat(axis);
+           (1.0 - sinTerm) * axis * axis.transpose() +
+           cosTerm * so3::diff::hat(axis);
   } else {
     // Numerical solution (good for testing the analytical solution)
     autodiff::Matrix3real J_ab = autodiff::Matrix3real::Identity();
@@ -167,7 +190,7 @@ autodiff::Matrix3real vec2jac(const autodiff::Vector3real& aaxis_ba,
 }
 
 autodiff::Matrix3real vec2jacinv(const autodiff::Vector3real& aaxis_ba,
-                           unsigned int numTerms) {
+                                 unsigned int numTerms) {
   // Get angle
   const autodiff::real phi_ba = aaxis_ba.norm();
   if (phi_ba < 1e-12) {
@@ -215,3 +238,4 @@ autodiff::Matrix3real vec2jacinv(const autodiff::Vector3real& aaxis_ba,
 }  // namespace diff
 }  // namespace so3
 }  // namespace lgmath
+#endif

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(lgmath)
 
 option(USE_AMENT "Use ament_cmake to build lgmath for ROS2." OFF)
+option(INCLUDE_AUTODIFF "Include autodiff library for automatic differentiation." ON)
 
 # Compiler setup
 set(CMAKE_CXX_STANDARD 17)
@@ -15,7 +16,6 @@ set(PROJECT_VERSION 1.1.0)
 
 # Find dependencies
 find_package(Eigen3 3.3.7 REQUIRED)
-find_package(autodiff)
 
 # Build library
 file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
@@ -26,7 +26,11 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(${PROJECT_NAME} autodiff::autodiff)
+if (INCLUDE_AUTODIFF)
+  add_definitions(-DINCLUDE_AUTODIFF -DAUTODIFF_ENABLE_IMPLICIT_CONVERSION_REAL)
+  find_package(autodiff REQUIRED)
+  target_link_libraries(${PROJECT_NAME} autodiff::autodiff)
+endif()
 
 # Install
 install(
@@ -75,6 +79,50 @@ install(
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
   DESTINATION lib/cmake/${PROJECT_NAME}
 )
+
+if(BUILD_TESTING)
+  include(FetchContent)
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/e88cb95b92acbdce9b058dd894a68e1281b38495.zip
+  )
+  # For Windows: Prevent overriding the parent project's compiler/linker settings
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+
+  enable_testing()
+  include(GoogleTest)
+
+  # Unit-tests
+  # add_executable(so3_tests tests/SO3Tests.cpp)
+  # target_link_libraries(so3_tests ${PROJECT_NAME} GTest::gtest_main)
+  # add_executable(se3_tests tests/SE3Tests.cpp)
+  # target_link_libraries(se3_tests ${PROJECT_NAME} GTest::gtest_main)
+  # add_executable(covariance_tests tests/CovarianceTests.cpp)
+  # target_link_libraries(covariance_tests ${PROJECT_NAME} GTest::gtest_main)
+  # add_executable(rotation_tests tests/RotationTests.cpp)
+  # target_link_libraries(rotation_tests ${PROJECT_NAME} GTest::gtest_main)
+  # add_executable(transform_tests tests/TransformTests.cpp)
+  # target_link_libraries(transform_tests ${PROJECT_NAME} GTest::gtest_main)
+  # add_executable(transform_with_covariance_tests tests/TransformWithCovarianceTests.cpp)
+  # target_link_libraries(transform_with_covariance_tests ${PROJECT_NAME} GTest::gtest_main)
+
+  # gtest_discover_tests(so3_tests)
+  # gtest_discover_tests(se3_tests)
+  # gtest_discover_tests(covariance_tests)
+  # gtest_discover_tests(rotation_tests)
+  # gtest_discover_tests(transform_tests)
+  # gtest_discover_tests(transform_with_covariance_tests)
+
+  if (INCLUDE_AUTODIFF)
+    # add_executable(so3_tests tests/SO3Tests.cpp)
+    # target_link_libraries(so3_tests ${PROJECT_NAME} GTest::gtest_main)
+    add_executable(se3_tests_autodiff tests/SE3AutodiffTests.cpp)
+    target_link_libraries(se3_tests_autodiff ${PROJECT_NAME} GTest::gtest_main)
+    # gtest_discover_tests(so3_tests)
+    gtest_discover_tests(se3_tests_autodiff)
+  endif()
+endif()
 
 ## ROS2 ament_cmake flow
 else()

@@ -1,3 +1,4 @@
+#if INCLUDE_AUTODIFF
 /**
  * \file Operations.cpp
  * \brief Implementation file for the SE3 Lie Group math functions.
@@ -337,3 +338,4 @@ autodiff::MatrixXreal vec2jacinv(const autodiff::VectorXreal& xi_ba,
 }  // namespace diff
 }  // namespace se3
 }  // namespace lgmath
+#endif
