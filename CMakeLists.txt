@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(lgmath)
 
 option(USE_AMENT "Use ament_cmake to build lgmath for ROS2." OFF)
-option(INCLUDE_AUTODIFF "Include autodiff library for automatic differentiation." ON)
+option(USE_AUTODIFF "Include autodiff library for automatic differentiation." ON)
 
 # Compiler setup
 set(CMAKE_CXX_STANDARD 17)
@@ -26,8 +26,8 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-if (INCLUDE_AUTODIFF)
-  add_definitions(-DINCLUDE_AUTODIFF -DAUTODIFF_ENABLE_IMPLICIT_CONVERSION_REAL)
+if (USE_AUTODIFF)
+  add_definitions(-DUSE_AUTODIFF -DAUTODIFF_ENABLE_IMPLICIT_CONVERSION_REAL)
   find_package(autodiff REQUIRED)
   target_link_libraries(${PROJECT_NAME} autodiff::autodiff)
 endif()
@@ -114,7 +114,7 @@ if(BUILD_TESTING)
   # gtest_discover_tests(transform_tests)
   # gtest_discover_tests(transform_with_covariance_tests)
 
-  if (INCLUDE_AUTODIFF)
+  if (USE_AUTODIFF)
     # add_executable(so3_tests tests/SO3Tests.cpp)
     # target_link_libraries(so3_tests ${PROJECT_NAME} GTest::gtest_main)
     add_executable(se3_tests_autodiff tests/SE3AutodiffTests.cpp)

@@ -1,4 +1,4 @@
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 /**
  * \file Operations.cpp
  * \brief Implementation file for the SE3 Lie Group math functions.
@@ -52,23 +52,23 @@ autodiff::MatrixXreal curlyhat(const autodiff::VectorXreal& xi) {
   return curlyhat(xi.head<3>(), xi.tail<3>());
 }
 
-// Eigen::Matrix<double, 4, 6> point2fs(const autodiff::Vector3real& p, double
-// scale)
-// {
-//   Eigen::Matrix<double, 4, 6> mat = Eigen::Matrix<double, 4, 6>::Zero();
-//   mat.topLeftCorner<3, 3>() = scale * autodiff::Matrix3real::Identity();
-//   mat.topRightCorner<3, 3>() = -so3::diff::hat(p);
-//   return mat;
-// }
+Eigen::Matrix<autodiff::real, 4, 6> point2fs(const autodiff::Vector3real& p, double
+scale)
+{
+  Eigen::Matrix<autodiff::real, 4, 6> mat = Eigen::Matrix<autodiff::real, 4, 6>::Zero();
+  mat.topLeftCorner<3, 3>() = scale * autodiff::Matrix3real::Identity();
+  mat.topRightCorner<3, 3>() = -so3::diff::hat(p);
+  return mat;
+}
 
-// Eigen::Matrix<double, 6, 4> point2sf(const autodiff::Vector3real& p, double
-// scale)
-// {
-//   Eigen::Matrix<double, 6, 4> mat = Eigen::Matrix<double, 6, 4>::Zero();
-//   mat.bottomLeftCorner<3, 3>() = -so3::diff::hat(p);
-//   mat.topRightCorner<3, 1>() = p;
-//   return mat;
-// }
+Eigen::Matrix<autodiff::real, 6, 4> point2sf(const autodiff::Vector3real& p, double
+scale)
+{
+  Eigen::Matrix<autodiff::real, 6, 4> mat = Eigen::Matrix<autodiff::real, 6, 4>::Zero();
+  mat.bottomLeftCorner<3, 3>() = -so3::diff::hat(p);
+  mat.topRightCorner<3, 1>() = p;
+  return mat;
+}
 
 void vec2tran_analytical(const autodiff::Vector3real& rho_ba,
                          const autodiff::Vector3real& aaxis_ba,

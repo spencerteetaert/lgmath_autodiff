@@ -1,11 +1,11 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
-/// \file NaiveSE3Tests.cpp
-/// \brief Unit tests for the naive implementation of the SE3 Lie Group math.
+/// \file SE3AutodiffTests.cpp
+/// \brief Unit tests for the autodiff implementation of the SE3 Lie Group math.
 /// \details Unit tests for the various Lie Group functions will test both
 /// special cases,
 ///          and randomly generated cases.
 ///
-/// \author Sean Anderson
+/// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
@@ -100,77 +100,69 @@ TEST(LGMathAutodiff, TestCurlyHatFunction) {
   }
 }
 
-// /////////////////////////////////////////////////////////////////////////////////////////////
-// /// \brief General test of homogeneous point to 4x6 matrix function
-// /////////////////////////////////////////////////////////////////////////////////////////////
-// TEST(LGMathAutodiff, TestPointTo4x6MatrixFunction) {
-//   // Number of random tests
-//   const unsigned numTests = 20;
+/////////////////////////////////////////////////////////////////////////////////////////////
+/// \brief General test of homogeneous point to 4x6 matrix function
+/////////////////////////////////////////////////////////////////////////////////////////////
+TEST(LGMathAutodiff, TestPointTo4x6MatrixFunction) {
+  // Number of random tests
+  const unsigned numTests = 20;
 
-//   // Add vectors to be tested - random
-//   std::vector<Eigen::Matrix<double, 4, 1> > trueVecs;
-//   for (unsigned i = 0; i < numTests; i++) {
-//     trueVecs.push_back(Eigen::Matrix<double, 4, 1>::Random());
-//   }
+  // Add vectors to be tested - random
+  std::vector<Eigen::Matrix<double, 4, 1> > trueVecs;
+  for (unsigned i = 0; i < numTests; i++) {
+    trueVecs.push_back(Eigen::Matrix<double, 4, 1>::Random());
+  }
 
-//   // Setup truth matrices
-//   std::vector<Eigen::Matrix<double, 4, 6> > trueMats;
-//   for (unsigned i = 0; i < numTests; i++) {
-//     Eigen::Matrix<double, 4, 6> mat;
-//     mat << trueVecs.at(i)[3], 0.0, 0.0, 0.0, trueVecs.at(i)[2],
-//         -trueVecs.at(i)[1], 0.0, trueVecs.at(i)[3], 0.0, -trueVecs.at(i)[2],
-//         0.0, trueVecs.at(i)[0], 0.0, 0.0, trueVecs.at(i)[3],
-//         trueVecs.at(i)[1], -trueVecs.at(i)[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-//         0.0;
-//     trueMats.push_back(mat);
-//   }
+  // Setup truth matrices
+  std::vector<Eigen::Matrix<double, 4, 6> > trueMats;
+  for (unsigned i = 0; i < numTests; i++) {
+    Eigen::Matrix<double, 4, 6> mat =
+        lgmath::se3::point2fs(trueVecs.at(i).head<3>(), trueVecs.at(i)[3]);
+    trueMats.push_back(mat);
+  }
 
-//   // Test the 3x1 function with scaling param
-//   for (unsigned i = 0; i < numTests; i++) {
-//     Eigen::Matrix<double, 4, 6> testMat =
-//         lgmath::se3::point2fs(trueVecs.at(i).head<3>(), trueVecs.at(i)[3]);
-//     std::cout << "true: " << trueMats.at(i) << std::endl;
-//     std::cout << "func: " << testMat << std::endl;
-//     EXPECT_TRUE(lgmath::common::diff::nearEqual(trueMats.at(i), testMat,
-//     1e-6));
-//   }
-// }
+  // Test the 3x1 function with scaling param
+  for (unsigned i = 0; i < numTests; i++) {
+    autodiff::Vector4real vec = trueVecs.at(i).cast<autodiff::real>();
+    Eigen::Matrix<double, 4, 6> testMat =
+        lgmath::se3::diff::point2fs(vec.head<3>(), vec[3]);
+    std::cout << "true: " << trueMats.at(i) << std::endl;
+    std::cout << "func: " << testMat << std::endl;
+    EXPECT_TRUE(lgmath::common::diff::nearEqual(trueMats.at(i), testMat, 1e-6));
+  }
+}
 
-// /////////////////////////////////////////////////////////////////////////////////////////////
-// /// \brief General test of homogeneous point to 6x4 matrix function
-// /////////////////////////////////////////////////////////////////////////////////////////////
-// TEST(LGMathAutodiff, TestPointTo6x4MatrixFunction) {
-//   // Number of random tests
-//   const unsigned numTests = 20;
+/////////////////////////////////////////////////////////////////////////////////////////////
+/// \brief General test of homogeneous point to 6x4 matrix function
+/////////////////////////////////////////////////////////////////////////////////////////////
+TEST(LGMathAutodiff, TestPointTo6x4MatrixFunction) {
+  // Number of random tests
+  const unsigned numTests = 20;
 
-//   // Add vectors to be tested - random
-//   std::vector<Eigen::Matrix<double, 4, 1> > trueVecs;
-//   for (unsigned i = 0; i < numTests; i++) {
-//     trueVecs.push_back(Eigen::Matrix<double, 4, 1>::Random());
-//   }
+  // Add vectors to be tested - random
+  std::vector<Eigen::Matrix<double, 4, 1> > trueVecs;
+  for (unsigned i = 0; i < numTests; i++) {
+    trueVecs.push_back(Eigen::Matrix<double, 4, 1>::Random());
+  }
 
-//   // Setup truth matrices
-//   std::vector<Eigen::Matrix<double, 6, 4> > trueMats;
-//   for (unsigned i = 0; i < numTests; i++) {
-//     Eigen::Matrix<double, 6, 4> mat;
-//     mat << 0.0, 0.0, 0.0, trueVecs.at(i)[0], 0.0, 0.0, 0.0,
-//     trueVecs.at(i)[1],
-//         0.0, 0.0, 0.0, trueVecs.at(i)[2], 0.0, trueVecs.at(i)[2],
-//         -trueVecs.at(i)[1], 0.0, -trueVecs.at(i)[2], 0.0, trueVecs.at(i)[0],
-//         0.0, trueVecs.at(i)[1], -trueVecs.at(i)[0], 0.0, 0.0;
-//     trueMats.push_back(mat);
-//   }
+  // Setup truth matrices
+  std::vector<Eigen::Matrix<double, 6, 4> > trueMats;
+  for (unsigned i = 0; i < numTests; i++) {
+    Eigen::Matrix<double, 6, 4> mat =
+        lgmath::se3::point2sf(trueVecs.at(i).head<3>(), trueVecs.at(i)[3]);
+    trueMats.push_back(mat);
+  }
 
-//   // Test the 3x1 function with scaling param
-//   for (unsigned i = 0; i < numTests; i++) {
-//     Eigen::Matrix<double, 6, 4> testMat =
-//         lgmath::se3::point2sf(trueVecs.at(i).head<3>(), trueVecs.at(i)[3]);
-//     std::cout << "true: " << trueMats.at(i) << std::endl;
-//     std::cout << "func: " << testMat << std::endl;
-//     EXPECT_TRUE(lgmath::common::diff::nearEqual(trueMats.at(i), testMat,
-//     1e-6));
-//   }
-// }
+  // Test the 3x1 function with scaling param
+  for (unsigned i = 0; i < numTests; i++) {
+    autodiff::Vector4real vec = trueVecs.at(i).cast<autodiff::real>();
+    Eigen::Matrix<double, 6, 4> testMat =
+        lgmath::se3::point2sf(vec.head<3>(), vec[3]);
+    std::cout << "true: " << trueMats.at(i) << std::endl;
+    std::cout << "func: " << testMat << std::endl;
+    EXPECT_TRUE(lgmath::common::diff::nearEqual(trueMats.at(i), testMat, 1e-6));
+  }
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief General test of exponential functions: vec2tran and tran2vec
@@ -382,15 +374,11 @@ TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
     EXPECT_TRUE(lgmath::common::diff::nearEqual(lhs, rhs, 1e-6));
   }
 }
-autodiff::VectorXreal func(const autodiff::VectorXreal &xi, const autodiff::VectorXreal &varpi)
-{    
-    auto J = lgmath::se3::diff::vec2jac(xi);
-    return J * varpi;
-}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief General test of differentiability of simple functions
 /////////////////////////////////////////////////////////////////////////////////////////////
-TEST(LGMathAutodiff, TestDerivative) {
+TEST(LGMathAutodiff, TestDerivative1) {
   const unsigned numTests = 20;
 
   std::vector<autodiff::VectorXreal> xis;
@@ -406,16 +394,20 @@ TEST(LGMathAutodiff, TestDerivative) {
     varpis.push_back(rand);
   }
 
+  auto func = [](const autodiff::VectorXreal &xi,
+                 const autodiff::VectorXreal &varpi) -> autodiff::VectorXreal {
+    return lgmath::se3::diff::vec2jac(xi) * varpi;
+  };
+
+  std::cout << varpis.at(0) << std::endl;
+
   for (unsigned i = 0; i < numTests; i++) {
-    // auto func = [](const autodiff::VectorXreal& xi, const autodiff::VectorXreal& varpi) {
-    //   auto J = lgmath::se3::diff::vec2jac(xi);
-    //   return J * varpi;
-    // };
+    autodiff::VectorXreal F;
+    auto func_jacobian =
+        autodiff::jacobian(func, autodiff::wrt(varpis.at(i)),
+                           autodiff::at(xis.at(i), varpis.at(i)), F);
 
-    autodiff::VectorXreal F; 
-    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(varpis.at(i)), autodiff::at(xis.at(i), varpis.at(i)), F);
-
-    auto expected = lgmath::se3::diff::vec2jac(xis.at(i)); 
+    auto expected = lgmath::se3::diff::vec2jac(xis.at(i));
 
     std::cout << "expected: " << expected << std::endl;
     std::cout << "returned grad: " << func_jacobian << std::endl;
@@ -423,9 +415,83 @@ TEST(LGMathAutodiff, TestDerivative) {
   }
 }
 
-// TODO: Add more derivative tests. Ideally with larger expansions than single term taylor series.
+/////////////////////////////////////////////////////////////////////////////////////////////
+/// \brief General test of differentiability of simple functions
+/////////////////////////////////////////////////////////////////////////////////////////////
+TEST(LGMathAutodiff, TestDerivative2) {
+  const unsigned numTests = 20;
 
-int main(int argc, char** argv) {
+  std::vector<autodiff::VectorXreal> xis;
+  for (unsigned i = 0; i < numTests; i++) {
+    autodiff::VectorXreal rand(6);
+    rand.setRandom();
+    xis.push_back(rand);
+  }
+
+  auto func = [](const autodiff::VectorXreal &xi) -> autodiff::VectorXreal {
+    return lgmath::se3::diff::tran2vec(lgmath::se3::diff::vec2tran(xi));
+  };
+
+  for (unsigned i = 0; i < numTests; i++) {
+    autodiff::VectorXreal F;
+    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
+                                            autodiff::at(xis.at(i)), F);
+
+    auto expected = autodiff::MatrixXreal::Identity(6, 6);
+
+    std::cout << "expected: " << expected << std::endl;
+    std::cout << "returned grad: " << func_jacobian << std::endl;
+    EXPECT_TRUE(lgmath::common::diff::nearEqual(expected, func_jacobian, 1e-6));
+  }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+/// \brief General test of differentiability of simple functions
+/////////////////////////////////////////////////////////////////////////////////////////////
+TEST(LGMathAutodiff, TestDerivative3) {
+  const unsigned numTests = 20;
+
+  std::vector<autodiff::VectorXreal> xis;
+  for (unsigned i = 0; i < numTests; i++) {
+    autodiff::VectorXreal rand(6);
+    rand.setRandom();
+    xis.push_back(rand);
+  }
+
+  autodiff::Vector4real a;
+  a << 1.0, 1.0, 1.0, 1.0;
+  auto func = [a](const autodiff::VectorXreal &xi) -> autodiff::VectorXreal {
+    return lgmath::se3::diff::vec2tran(xi) * a;
+  };
+
+  for (unsigned i = 0; i < numTests; i++) {
+    autodiff::VectorXreal F;
+    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
+                                            autodiff::at(xis.at(i)), F);
+
+    autodiff::Matrix4real T = lgmath::se3::diff::vec2tran(xis.at(i));
+    autodiff::Vector4real temp_vec = T * a;
+    Eigen::Matrix<autodiff::real, 4, 6> p2fs =
+        lgmath::se3::diff::point2fs(temp_vec.topRows(3), temp_vec(3));
+    Eigen::Matrix<autodiff::real, 6, 6> jac =
+        lgmath::se3::diff::vec2jac(xis.at(i));
+    Eigen::Matrix<autodiff::real, 4, 6> expected = p2fs * jac;
+
+    std::cout << "temp_vec: " << temp_vec << std::endl;
+    std::cout << "p2fs: " << p2fs << std::endl;
+    std::cout << "jac: " << lgmath::se3::diff::vec2jac(xis.at(i)) << std::endl;
+
+    std::cout << "expected: " << expected << std::endl;
+    std::cout << "returned grad: " << func_jacobian << std::endl;
+
+    std::cout << "output: "
+              << lgmath::common::diff::nearEqual(expected, func_jacobian, 1e-6);
+
+    EXPECT_TRUE(lgmath::common::diff::nearEqual(expected, func_jacobian, 1e-6));
+  }
+}
+
+int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

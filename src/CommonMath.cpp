@@ -10,7 +10,7 @@
 
 #include <math.h>
 
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
 #endif 
@@ -83,7 +83,7 @@ bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
   return near;
 }
 
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 
 namespace diff {
   
@@ -92,11 +92,7 @@ bool nearEqual(autodiff::real a, autodiff::real b, double tol) {
 }
 
 bool nearEqual(autodiff::MatrixXreal A, autodiff::MatrixXreal B, double tol) {
-  Eigen::MatrixXd A_d(A.rows(), A.cols()); 
-  A_d = A.cast<double>();
-  Eigen::MatrixXd B_d(B.rows(), B.cols()); 
-  B_d = B.cast<double>();
-  return common::nearEqual(A_d, B_d, tol);
+  return common::nearEqual(A.cast<double>(), B.cast<double>(), tol);
 }
 
 bool nearEqualAngle(autodiff::real radA, autodiff::real radB, double tol) {
@@ -105,18 +101,12 @@ bool nearEqualAngle(autodiff::real radA, autodiff::real radB, double tol) {
 
 bool nearEqualAxisAngle(autodiff::Vector3real aaxis1,
                         autodiff::Vector3real aaxis2, double tol) {
-  Eigen::Vector3d aaxis1_d = aaxis1.cast<double>();
-  Eigen::Vector3d aaxis2_d = aaxis2.cast<double>();
-  return common::nearEqualAxisAngle(aaxis1_d, aaxis2_d, tol);
+  return common::nearEqualAxisAngle(aaxis1.cast<double>(), aaxis2.cast<double>(), tol);
 }
 
 bool nearEqualLieAlg(autodiff::VectorXreal vec1, autodiff::VectorXreal vec2,
                      double tol) {
-  Eigen::VectorXd vec1_d(vec1.size()); 
-  vec1_d = vec1.cast<double>();
-  Eigen::VectorXd vec2_d(vec2.size()); 
-  vec2_d = vec2.cast<double>();
-  return common::nearEqualLieAlg(vec1_d, vec2_d, tol);
+  return common::nearEqualLieAlg(vec1.cast<double>(), vec2.cast<double>(), tol);
 }
 }  // namespace diff
 #endif

@@ -79,7 +79,7 @@ void vec2rot(const Eigen::Vector3d& aaxis_ba, Eigen::Matrix3d* out_C_ab,
 
 Eigen::Vector3d rot2vec(const Eigen::Matrix3d& C_ab, const double eps) {
   // Get angle
-  const double phi_ba = acos(std::clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
+  const double phi_ba = acos(std::clamp(0.5 * (C_ab.trace() - 1.0), -0.999999999999999, 0.999999999999999));
   const double sinphi_ba = sin(phi_ba);
 
   if (fabs(sinphi_ba) > eps) {

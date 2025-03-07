@@ -25,3 +25,9 @@
 // R3
 #include <lgmath/r3/Operations.hpp>
 #include <lgmath/r3/Types.hpp>
+
+// Autodiff 
+#if USE_AUTODIFF
+#include <lgmath/se3/OperationsAutodiff.hpp>
+#include <lgmath/so3/OperationsAutodiff.hpp>
+#endif

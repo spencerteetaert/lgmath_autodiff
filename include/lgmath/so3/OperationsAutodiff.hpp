@@ -1,4 +1,4 @@
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 /**
  * \file Operations.hpp
  * \brief Header file for the SO3 Lie Group math functions.

@@ -1,4 +1,4 @@
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 /**
  * \file Operations.hpp
  * \brief Header file for the SE3 Lie Group math functions.
@@ -77,23 +77,23 @@ autodiff::MatrixXreal curlyhat(const autodiff::Vector3real& rho,
  */
 autodiff::MatrixXreal curlyhat(const autodiff::VectorXreal& xi);
 
-// /**
-//  * \brief Turns a homogeneous point into a special 4x6 matrix (circle-dot
-//  * operator)
-//  * \details
-//  * See eq. 72 in Barfoot-TRO-2014 for more information.
-//  */
-// Eigen::Matrix<double, 4, 6> point2fs(const autodiff::Vector3real& p,
-//                                      double scale = 1);
+/**
+ * \brief Turns a homogeneous point into a special 4x6 matrix (circle-dot
+ * operator)
+ * \details
+ * See eq. 72 in Barfoot-TRO-2014 for more information.
+ */
+Eigen::Matrix<autodiff::real, 4, 6> point2fs(const autodiff::Vector3real& p,
+                                     double scale = 1);
 
-// /**
-//  * \brief Turns a homogeneous point into a special 6x4 matrix (double-circle
-//  * operator)
-//  *
-//  * See eq. 72 in Barfoot-TRO-2014 for more information.
-//  */
-// Eigen::Matrix<double, 6, 4> point2sf(const autodiff::Vector3real& p,
-//                                      double scale = 1);
+/**
+ * \brief Turns a homogeneous point into a special 6x4 matrix (double-circle
+ * operator)
+ *
+ * See eq. 72 in Barfoot-TRO-2014 for more information.
+ */
+Eigen::Matrix<autodiff::real, 6, 4> point2sf(const autodiff::Vector3real& p,
+                                     double scale = 1);
 
 /**
  * \brief Builds a transformation matrix using the analytical exponential map

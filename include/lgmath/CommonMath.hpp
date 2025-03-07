@@ -10,7 +10,7 @@
 
 #include <Eigen/Core>
 
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
 #endif
@@ -60,7 +60,7 @@ bool nearEqualAxisAngle(Eigen::Matrix<double, 3, 1> aaxis1,
 bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
                      Eigen::Matrix<double, 6, 1> vec2, double tol = 1e-6);
 
-#if INCLUDE_AUTODIFF
+#if USE_AUTODIFF
 namespace diff {
 
 bool nearEqual(autodiff::real a, autodiff::real b, double tol);
@@ -75,7 +75,7 @@ bool nearEqualAxisAngle(autodiff::Vector3real aaxis1,
 bool nearEqualLieAlg(autodiff::VectorXreal vec1, autodiff::VectorXreal vec2,
                      double tol);
 }  // namespace diff
-#endif // INCLUDE_AUTODIFF
+#endif // USE_AUTODIFF
 
 }  // namespace common
 }  // namespace lgmath
