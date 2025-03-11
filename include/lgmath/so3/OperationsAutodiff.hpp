@@ -11,8 +11,19 @@
 
 #include <Eigen/Core>
 
+#ifdef AUTODIFF_USE_FORWARD 
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::real1st
+#endif 
+#else 
+#include <autodiff/reverse/var.hpp>
+#include <autodiff/reverse/var/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::var
+#endif
+#endif
 
 /// Lie Group Math - Special Orthogonal Group
 namespace lgmath {
@@ -30,7 +41,7 @@ namespace diff {
  *
  * See eq. 5 in Barfoot-TRO-2014 for more information.
  */
-autodiff::Matrix3real hat(const autodiff::Vector3real& vector);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> hat(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& vector);
 
 /**
  * \brief Builds a rotation matrix using the exponential map
@@ -63,7 +74,7 @@ autodiff::Matrix3real hat(const autodiff::Vector3real& vector);
  * Noting that omega is negative (left-hand-rule).
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-autodiff::Matrix3real vec2rot(const autodiff::Vector3real& aaxis_ba,
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
                         unsigned int numTerms = 0);
 
 /**
@@ -79,8 +90,8 @@ autodiff::Matrix3real vec2rot(const autodiff::Vector3real& aaxis_ba,
  *
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-void vec2rot(const autodiff::Vector3real& aaxis_ba, autodiff::Matrix3real* out_C_ab,
-             autodiff::Matrix3real* out_J_ab);
+void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba, Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
+             Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_J_ab);
 
 /**
  * \brief Compute the matrix log of a rotation matrix
@@ -103,7 +114,7 @@ void vec2rot(const autodiff::Vector3real& aaxis_ba, autodiff::Matrix3real* out_C
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-autodiff::Vector3real rot2vec(const autodiff::Matrix3real& C_ab, const double eps = 1e-6);
+Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab, const double eps = 1e-6);
 
 /**
  * \brief Builds the 3x3 Jacobian matrix of SO(3)
@@ -120,7 +131,7 @@ autodiff::Vector3real rot2vec(const autodiff::Matrix3real& C_ab, const double ep
  *
  * For more information see eq. 98 in Barfoot-TRO-2014.
  */
-autodiff::Matrix3real vec2jac(const autodiff::Vector3real& aaxis_ba,
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
                         unsigned int numTerms = 0);
 
 /**
@@ -141,7 +152,7 @@ autodiff::Matrix3real vec2jac(const autodiff::Vector3real& aaxis_ba,
  *
  * For more information see eq. 99 in Barfoot-TRO-2014.
  */
-autodiff::Matrix3real vec2jacinv(const autodiff::Vector3real& aaxis_ba,
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jacinv(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
                            unsigned int numTerms = 0);
 
 }  // namespace diff

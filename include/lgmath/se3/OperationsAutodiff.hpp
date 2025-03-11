@@ -11,8 +11,19 @@
 
 #include <Eigen/Core>
 
+#ifdef AUTODIFF_USE_FORWARD 
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::real1st
+#endif 
+#else 
+#include <autodiff/reverse/var.hpp>
+#include <autodiff/reverse/var/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::var
+#endif
+#endif
 
 /// Lie Group Math - Special Euclidean Group
 namespace lgmath {
@@ -31,7 +42,9 @@ namespace diff {
  *
  * See eq. 4 in Barfoot-TRO-2014 for more information.
  */
-autodiff::Matrix4real hat(const autodiff::Vector3real& rho, const autodiff::Vector3real& aaxis);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> hat(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis);
 
 /**
  * \brief Builds the 4x4 "skew symmetric matrix"
@@ -46,7 +59,8 @@ autodiff::Matrix4real hat(const autodiff::Vector3real& rho, const autodiff::Vect
  *
  * See eq. 4 in Barfoot-TRO-2014 for more information.
  */
-autodiff::Matrix4real hat(const autodiff::VectorXreal& xi);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> hat(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi);
 
 /**
  * \brief Builds the 6x6 "curly hat" matrix (related to the skew symmetric
@@ -60,8 +74,9 @@ autodiff::Matrix4real hat(const autodiff::VectorXreal& xi);
  *
  * See eq. 12 in Barfoot-TRO-2014 for more information.
  */
-autodiff::MatrixXreal curlyhat(const autodiff::Vector3real& rho,
-                                     const autodiff::Vector3real& aaxis);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> curlyhat(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis);
 
 /**
  * \brief Builds the 6x6 "curly hat" matrix (related to the skew symmetric
@@ -75,7 +90,8 @@ autodiff::MatrixXreal curlyhat(const autodiff::Vector3real& rho,
  *
  * See eq. 12 in Barfoot-TRO-2014 for more information.
  */
-autodiff::MatrixXreal curlyhat(const autodiff::VectorXreal& xi);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> curlyhat(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi);
 
 /**
  * \brief Turns a homogeneous point into a special 4x6 matrix (circle-dot
@@ -83,8 +99,8 @@ autodiff::MatrixXreal curlyhat(const autodiff::VectorXreal& xi);
  * \details
  * See eq. 72 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<autodiff::real, 4, 6> point2fs(const autodiff::Vector3real& p,
-                                     double scale = 1);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6> point2fs(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& p, double scale = 1);
 
 /**
  * \brief Turns a homogeneous point into a special 6x4 matrix (double-circle
@@ -92,8 +108,8 @@ Eigen::Matrix<autodiff::real, 4, 6> point2fs(const autodiff::Vector3real& p,
  *
  * See eq. 72 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<autodiff::real, 6, 4> point2sf(const autodiff::Vector3real& p,
-                                     double scale = 1);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 4> point2sf(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& p, double scale = 1);
 
 /**
  * \brief Builds a transformation matrix using the analytical exponential map
@@ -127,10 +143,10 @@ Eigen::Matrix<autodiff::real, 6, 4> point2sf(const autodiff::Vector3real& p,
  * Both the analytical (numTerms = 0) or the numerical (numTerms > 0) may be
  * evaluated.
  */
-void vec2tran_analytical(const autodiff::Vector3real& rho_ba,
-                         const autodiff::Vector3real& aaxis_ba,
-                         autodiff::Matrix3real* out_C_ab,
-                         autodiff::Vector3real* out_r_ba_ina);
+void vec2tran_analytical(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
+                         const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
+                         Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
+                         Eigen::Vector<AUTODIFF_VAR_TYPE, 3>* out_r_ba_ina);
 
 /**
  * \brief Builds a transformation matrix using the first N terms of the
@@ -141,26 +157,28 @@ void vec2tran_analytical(const autodiff::Vector3real& rho_ba,
  *
  * For more information see eq. 96 in Barfoot-TRO-2014
  */
-void vec2tran_numerical(const autodiff::Vector3real& rho_ba,
-                        const autodiff::Vector3real& aaxis_ba,
-                        autodiff::Matrix3real* out_C_ab,
-                        autodiff::Vector3real* out_r_ba_ina,
+void vec2tran_numerical(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
+                        const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
+                        Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
+                        Eigen::Vector<AUTODIFF_VAR_TYPE, 3>* out_r_ba_ina,
                         unsigned int numTerms = 0);
 
 /**
  * \brief Builds the 3x3 rotation and 3x1 translation using the exponential
  * map, the default parameters (numTerms = 0) use the analytical solution.
  */
-void vec2tran(const autodiff::VectorXreal& xi_ba,
-              autodiff::Matrix3real* out_C_ab, autodiff::Vector3real* out_r_ba_ina,
+void vec2tran(const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
+              Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
+              Eigen::Vector<AUTODIFF_VAR_TYPE, 3>* out_r_ba_ina,
               unsigned int numTerms = 0);
 
 /**
  * \brief Builds a 4x4 transformation matrix using the exponential map, the
  * default parameters (numTerms = 0) use the analytical solution.
  */
-autodiff::Matrix4real vec2tran(const autodiff::VectorXreal& xi_ba,
-                         unsigned int numTerms = 0);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> vec2tran(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
+    unsigned int numTerms = 0);
 
 /**
  * \brief Compute the matrix log of a transformation matrix (from the rotation
@@ -180,8 +198,9 @@ autodiff::Matrix4real vec2tran(const autodiff::VectorXreal& xi_ba,
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-autodiff::VectorXreal tran2vec(const autodiff::Matrix3real& C_ab,
-                                     const autodiff::Vector3real& r_ba_ina);
+Eigen::Vector<AUTODIFF_VAR_TYPE, 6> tran2vec(
+    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& r_ba_ina);
 
 /**
  * \brief Compute the matrix log of a transformation matrix
@@ -200,7 +219,8 @@ autodiff::VectorXreal tran2vec(const autodiff::Matrix3real& C_ab,
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-autodiff::VectorXreal tran2vec(const autodiff::Matrix4real& T_ab);
+Eigen::Vector<AUTODIFF_VAR_TYPE, 6> tran2vec(
+    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>& T_ab);
 
 /**
  * \brief Builds the 6x6 adjoint transformation matrix from the 3x3 rotation
@@ -215,8 +235,9 @@ autodiff::VectorXreal tran2vec(const autodiff::Matrix4real& T_ab);
  *
  * See eq. 101 in Barfoot-TRO-2014 for more information.
  */
-autodiff::MatrixXreal tranAd(const autodiff::Matrix3real& C_ab,
-                                   const autodiff::Vector3real& r_ba_ina);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> tranAd(
+    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& r_ba_ina);
 
 /**
  * \brief Builds the 6x6 adjoint transformation matrix from a 4x4 one
@@ -229,22 +250,25 @@ autodiff::MatrixXreal tranAd(const autodiff::Matrix3real& C_ab,
  *
  * See eq. 101 in Barfoot-TRO-2014 for more information.
  */
-autodiff::MatrixXreal tranAd(const autodiff::Matrix4real& T_ab);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> tranAd(
+    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>& T_ab);
 
 /**
  * \brief Construction of the 3x3 "Q" matrix, used in the 6x6 Jacobian of SE(3)
  * \details
  * See eq. 102 in Barfoot-TRO-2014 for more information
  */
-autodiff::Matrix3real vec2Q(const autodiff::Vector3real& rho_ba,
-                      const autodiff::Vector3real& aaxis_ba);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2Q(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba);
 
 /**
  * \brief Construction of the 3x3 "Q" matrix, used in the 6x6 Jacobian of SE(3)
  * \details
  * See eq. 102 in Barfoot-TRO-2014 for more information
  */
-autodiff::Matrix3real vec2Q(const autodiff::VectorXreal& xi_ba);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2Q(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba);
 
 /**
  * \brief Builds the 6x6 Jacobian matrix of SE(3) using the analytical
@@ -267,8 +291,9 @@ autodiff::Matrix3real vec2Q(const autodiff::VectorXreal& xi_ba);
  *
  * For more information see eq. 100 in Barfoot-TRO-2014.
  */
-autodiff::MatrixXreal vec2jac(const autodiff::Vector3real& rho_ba,
-                                    const autodiff::Vector3real& aaxis_ba);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jac(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba);
 
 /**
  * \brief Builds the 6x6 Jacobian matrix of SE(3) from the se(3) algebra; note
@@ -277,8 +302,9 @@ autodiff::MatrixXreal vec2jac(const autodiff::Vector3real& rho_ba,
  * \details
  * For more information see eq. 100 in Barfoot-TRO-2014.
  */
-autodiff::MatrixXreal vec2jac(const autodiff::VectorXreal& xi_ba,
-                                    unsigned int numTerms = 0);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jac(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
+    unsigned int numTerms = 0);
 
 /**
  * \brief Builds the 6x6 inverse Jacobian matrix of SE(3) using the analytical
@@ -297,8 +323,9 @@ autodiff::MatrixXreal vec2jac(const autodiff::VectorXreal& xi_ba,
  *
  * For more information see eq. 103 in Barfoot-TRO-2014.
  */
-autodiff::MatrixXreal vec2jacinv(const autodiff::Vector3real& rho_ba,
-                                       const autodiff::Vector3real& aaxis_ba);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jacinv(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba);
 
 /**
  * \brief Builds the 6x6 inverse Jacobian matrix of SE(3) from the se(3)
@@ -308,8 +335,9 @@ autodiff::MatrixXreal vec2jacinv(const autodiff::Vector3real& rho_ba,
  * \details
  * For more information see eq. 103 in Barfoot-TRO-2014.
  */
-autodiff::MatrixXreal vec2jacinv(const autodiff::VectorXreal& xi_ba,
-                                       unsigned int numTerms = 0);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jacinv(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
+    unsigned int numTerms = 0);
 
 }  // namespace diff
 }  // namespace se3
