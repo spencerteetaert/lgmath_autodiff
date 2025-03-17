@@ -10,14 +10,13 @@
 #pragma once
 
 #include <Eigen/Core>
-
-#ifdef AUTODIFF_USE_FORWARD 
+#ifdef AUTODIFF_USE_FORWARD
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
 #ifndef AUTODIFF_VAR_TYPE
 #define AUTODIFF_VAR_TYPE autodiff::real1st
-#endif 
-#else 
+#endif
+#else
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
 #ifndef AUTODIFF_VAR_TYPE

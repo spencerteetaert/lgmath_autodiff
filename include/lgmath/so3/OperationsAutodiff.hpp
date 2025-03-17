@@ -10,14 +10,13 @@
 #pragma once
 
 #include <Eigen/Core>
-
-#ifdef AUTODIFF_USE_FORWARD 
+#ifdef AUTODIFF_USE_FORWARD
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
 #ifndef AUTODIFF_VAR_TYPE
 #define AUTODIFF_VAR_TYPE autodiff::real1st
-#endif 
-#else 
+#endif
+#else
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
 #ifndef AUTODIFF_VAR_TYPE
@@ -41,7 +40,8 @@ namespace diff {
  *
  * See eq. 5 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> hat(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& vector);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> hat(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& vector);
 
 /**
  * \brief Builds a rotation matrix using the exponential map
@@ -74,8 +74,9 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> hat(const Eigen::Vector<AUTODIFF_VAR_TYPE
  * Noting that omega is negative (left-hand-rule).
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-                        unsigned int numTerms = 0);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2rot(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
+    unsigned int numTerms = 0);
 
 /**
  * \brief Builds and returns both the rotation matrix and SO(3) Jacobian
@@ -90,7 +91,8 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2rot(const Eigen::Vector<AUTODIFF_VAR_
  *
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba, Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
+void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
+             Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
              Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_J_ab);
 
 /**
@@ -114,7 +116,9 @@ void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba, Eigen::Matrix<
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab, const double eps = 1e-6);
+Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(
+    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab,
+    const double eps = 1e-6);
 
 /**
  * \brief Builds the 3x3 Jacobian matrix of SO(3)
@@ -131,8 +135,9 @@ Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(const Eigen::Matrix<AUTODIFF_VAR_TYP
  *
  * For more information see eq. 98 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-                        unsigned int numTerms = 0);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
+    unsigned int numTerms = 0);
 
 /**
  * \brief Builds the 3x3 inverse Jacobian matrix of SO(3)
@@ -152,8 +157,9 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(const Eigen::Vector<AUTODIFF_VAR_
  *
  * For more information see eq. 99 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jacinv(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-                           unsigned int numTerms = 0);
+Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jacinv(
+    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
+    unsigned int numTerms = 0);
 
 }  // namespace diff
 }  // namespace so3

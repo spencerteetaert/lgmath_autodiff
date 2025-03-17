@@ -12,14 +12,15 @@
 
 #include <stdio.h>
 #include <algorithm>
+#include <iostream>
 #include <stdexcept>
 
 #include <Eigen/Dense>
 
-#ifdef AUTODIFF_USE_FORWARD 
+#ifdef AUTODIFF_USE_FORWARD
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
-#else 
+#else
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
 #endif
@@ -43,7 +44,10 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2rot(
 
   // If angle is very small, return Identity
   if (phi_ba < 1e-12) {
-    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+           hat(aaxis_ba);  // TODO: This should be rederived as it may introduce
+                           // error over time. Hat term is included to allow
+                           // gradient terms to transmit through.
   }
 
   if (numTerms == 0) {
@@ -93,64 +97,52 @@ void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
               so3::diff::hat(aaxis_ba) * (*out_J_ab);
 }
 
-AUTODIFF_VAR_TYPE clamp(const AUTODIFF_VAR_TYPE& val, const AUTODIFF_VAR_TYPE& min,
-                    const AUTODIFF_VAR_TYPE& max) {
-  return val < min ? min : (val > max ? max : val);
+AUTODIFF_VAR_TYPE clamp(const AUTODIFF_VAR_TYPE& val,
+                        const AUTODIFF_VAR_TYPE& min,
+                        const AUTODIFF_VAR_TYPE& max) {
+  return (val < min) ? min : (max < val) ? max : val;
+}
+
+AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
+  if (1.0 - fabs(x) > 1e-6)
+    return acos(x);
+  else
+    return M_PI_2 - atan(x / sqrt(1.0 - x * x + 1e-8));
 }
 
 Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(
     const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab, const double eps) {
   // Get angle
-  const AUTODIFF_VAR_TYPE phi_ba = acos(
-      clamp(0.5 * (C_ab.trace() - 1.0), -0.999999999999999, 0.999999999999999));
+  // Find the eigenvalues and eigenvectors
+  const AUTODIFF_VAR_TYPE phi_ba =
+      smooth_acos(clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
   const AUTODIFF_VAR_TYPE sinphi_ba = sin(phi_ba);
 
-  if (fabs(double(sinphi_ba)) > eps) {
+  if (fabs(sinphi_ba) > eps) {
     // General case, angle is NOT near 0, pi, or 2*pi
     Eigen::Vector<AUTODIFF_VAR_TYPE, 3> axis;
     axis << C_ab(2, 1) - C_ab(1, 2), C_ab(0, 2) - C_ab(2, 0),
         C_ab(1, 0) - C_ab(0, 1);
     return (0.5 * phi_ba / sinphi_ba) * axis;
+  } else if (fabs(phi_ba) > eps) {
 
-  } else if (fabs(double(phi_ba)) > eps) {
-    // Angle is near pi or 2*pi
-    // ** Note with this method we do not know the sign of 'phi', however since
-    // we know phi is
-    //    close to pi or 2*pi, the sign is unimportant..
+    Eigen::EigenSolver<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>> eigenSolver(
+        C_ab);
 
-    // Find the eigenvalues and eigenvectors
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
-        eigenSolver(C_ab);
-
-    /*
-    Note: This requires a small change in the autodiff library. This comes from
-    the fact that the Eigen eigensolver uses std functions that are not
-    supported by autodiff. The type casting from real type to double is only
-    supported explicitly. This edit allows for casting to double to be done
-    implicitly, enabling use of std functions.
-
-    https://github.com/autodiff/autodiff/blob/b0a4feff5b2a61262e94305452ac53369fe35e75/autodiff/forward/real/real.hpp#L189
-
-    The change is to swap out the conditional code block in real.hpp with:
-    ----------------------------------------------------------------------------------------------------------------------
-    #if defined(AUTODIFF_ENABLE_IMPLICIT_CONVERSION_REAL) ||
-    defined(AUTODIFF_ENABLE_IMPLICIT_CONVERSION) AUTODIFF_DEVICE_FUNC constexpr
-    operator T() const { return static_cast<T>(m_data[0]); } #endif
-    template<typename U, Requires<isArithmetic<U>> = true>
-    AUTODIFF_DEVICE_FUNC constexpr explicit operator U() const { return
-    static_cast<U>(m_data[0]); }
-    ----------------------------------------------------------------------------------------------------------------------
-
-    This is untested and may break other functionality.
-    */
+    const auto eivalues = eigenSolver.eigenvalues();
+    const auto eivalues_imag = eivalues.imag();
+    const auto eivalues_real = eivalues.real();
+    const auto eivec = eigenSolver.eigenvectors();
+    const auto eivec_real = eivec.real();
 
     // Try each eigenvalue
     for (int i = 0; i < 3; i++) {
       // Check if eigen value is near +1.0
-      if (fabs(double(eigenSolver.eigenvalues()[i]) - 1.0) < 1e-6) {
+      if ((fabs(eivalues_imag(i)) < 1e-6) &&
+          (fabs(eivalues_real(i) - 1.0) < 1e-6)) {
         // Get corresponding angle-axis
         Eigen::Vector<AUTODIFF_VAR_TYPE, 3> aaxis_ba =
-            phi_ba * eigenSolver.eigenvectors().col(i);
+            phi_ba * eivec_real.col(i);
         return aaxis_ba;
       }
     }
@@ -160,14 +152,12 @@ Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(
         "so3 logarithmic map failed to find an axis-angle, "
         "angle was near pi, or 2*pi, but no eigenvalues were near 1");
   } else {
-    // Angle is near zero
-    return Eigen::Vector<AUTODIFF_VAR_TYPE, 3>::Zero();
+    // Angle is near zero TODO: This formulation introduces error over time
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> aaxis_ba;
+    aaxis_ba << (-1.0 * C_ab(1, 2) + C_ab(2, 1)) / 2.0,
+        (C_ab(0, 2) - C_ab(2, 0)) / 2.0, (-1.0 * C_ab(0, 1) + C_ab(1, 0)) / 2.0;
+    return aaxis_ba;
   }
-}
-
-void func(const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& R) {
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
-      eigenSolver(R);
 }
 
 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(

@@ -75,7 +75,36 @@ bool nearEqualAxisAngle(autodiff::Vector3real aaxis1,
 bool nearEqualLieAlg(autodiff::VectorXreal vec1, autodiff::VectorXreal vec2,
                      double tol);
 }  // namespace diff
-#endif // USE_AUTODIFF
+#endif  // USE_AUTODIFF
 
 }  // namespace common
 }  // namespace lgmath
+
+#if USE_AUTODIFF
+
+namespace autodiff {
+namespace detail {
+template <size_t N, typename T>
+AUTODIFF_DEVICE_FUNC bool isfinite(const Real<N, T>& x) {
+  return std::isfinite(double(x));
+}
+
+template <size_t N, typename T>
+AUTODIFF_DEVICE_FUNC bool isinf(const Real<N, T>& x) {
+  return std::isfinite(double(x));
+}
+
+template <size_t N, typename T>
+AUTODIFF_DEVICE_FUNC bool isnan(const Real<N, T>& x) {
+  return std::isnan(double(x));
+}
+
+template <size_t N, typename T>
+AUTODIFF_DEVICE_FUNC double fabs(const Real<N, T>& x) {
+  return std::fabs(x.val());
+}
+
+}  // namespace detail
+}  // namespace autodiff
+
+#endif

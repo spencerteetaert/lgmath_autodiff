@@ -386,7 +386,7 @@ TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief General test of differentiability of simple functions
+/// \brief General test of differentiability. f = J(xi) varpi, tests df/dvarpi 
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestDerivative1) {
   const unsigned numTests = 20;
@@ -438,17 +438,43 @@ TEST(LGMathAutodiff, TestDerivative1) {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief General test of differentiability of simple functions
+/// \brief General test of differentiability of simple functions. f = tran2vec(vec2tran(xi)), tests df/dxi
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestDerivative2) {
-  const unsigned numTests = 20;
-
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> xis;
-  for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
-    rand.setRandom();
-    xis.push_back(rand);
+  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1> > xis;
+  Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1> temp;
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 1.0, 0.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 1.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, lgmath::constants::PI;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, -lgmath::constants::PI, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, -lgmath::constants::PI, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, -lgmath::constants::PI;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.5 * lgmath::constants::PI, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.5 * lgmath::constants::PI, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.5 * lgmath::constants::PI;
+  xis.push_back(temp);
+  const unsigned numRand = 20;
+  for (unsigned i = 0; i < numRand; i++) {
+    xis.push_back(Eigen::Matrix<double, 6, 1>::Random());
   }
+
+  const unsigned numTests = xis.size();
 
   auto func = [](const Eigen::Vector<AUTODIFF_VAR_TYPE, 6> &xi)
       -> Eigen::Vector<AUTODIFF_VAR_TYPE, 6> {
@@ -476,7 +502,7 @@ TEST(LGMathAutodiff, TestDerivative2) {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief General test of differentiability of simple functions
+/// \brief General test of differentiability of simple functions. f = T(xi) * a, tests df/dxi
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestDerivative3) {
   const unsigned numTests = 20;
