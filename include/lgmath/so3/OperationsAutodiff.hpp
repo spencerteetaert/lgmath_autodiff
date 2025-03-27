@@ -10,24 +10,39 @@
 #pragma once
 
 #include <Eigen/Core>
-#ifdef AUTODIFF_USE_FORWARD
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-#ifndef AUTODIFF_VAR_TYPE
-#define AUTODIFF_VAR_TYPE autodiff::real1st
-#endif
-#else
+#include <Eigen/Dense>
+
+#ifdef AUTODIFF_USE_BACKWARD
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
 #ifndef AUTODIFF_VAR_TYPE
 #define AUTODIFF_VAR_TYPE autodiff::var
+#endif
+#else
+#include <autodiff/forward/real.hpp>
+#include <autodiff/forward/real/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::real1st
 #endif
 #endif
 
 /// Lie Group Math - Special Orthogonal Group
 namespace lgmath {
 namespace so3 {
-namespace diff {
+
+AUTODIFF_VAR_TYPE clamp(const AUTODIFF_VAR_TYPE& val,
+                        const AUTODIFF_VAR_TYPE& min,
+                        const AUTODIFF_VAR_TYPE& max) {
+  return (val < min) ? min : (max < val) ? max : val;
+}
+
+AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
+  if (1.0 - fabs(x) > 1e-6)
+    return acos(x);
+  else
+    return M_PI_2 - atan(x / sqrt(1.0 - x * x + 1e-13));
+}
+
 /**
  * \brief Builds the 3x3 skew symmetric matrix
  * \details
@@ -40,8 +55,15 @@ namespace diff {
  *
  * See eq. 5 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> hat(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& vector);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+hat(const Eigen::Vector<T, 3>& vector) {
+  Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> mat;
+  mat << 0.0, -vector[2], vector[1], vector[2], 0.0, -vector[0], -vector[1],
+      vector[0], 0.0;
+  return mat;
+}
 
 /**
  * \brief Builds a rotation matrix using the exponential map
@@ -74,26 +96,46 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> hat(
  * Noting that omega is negative (left-hand-rule).
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2rot(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-    unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2rot(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
+  // Get angle
+  const T phi_ba = aaxis_ba.norm();
 
-/**
- * \brief Builds and returns both the rotation matrix and SO(3) Jacobian
- * \details
- * Similar to the function 'vec2rot', this function builds a rotation matrix,
- * C_ab, using an equivalent expression to the exponential map, but allows us to
- * simultaneously extract the Jacobian of SO(3), which is also required in some
- * cases.
- *
- *   J_ab = jac(aaxis_ba)
- *   C_ab = exp(aaxis_ba^) = identity + aaxis_ba^ * J_ab
- *
- * For more information see eq. 97 in Barfoot-TRO-2014.
- */
-void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-             Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
-             Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_J_ab);
+  // If angle is very small, return Identity
+  if (phi_ba < 1e-12) {
+    std::cout << "vec2rot small angle" << std::endl;
+    return Eigen::Matrix<T, 3, 3>::Identity() + hat(aaxis_ba);
+  }
+
+  if (numTerms == 0) {
+    std::cout << "vec2rot analytical" << std::endl;
+    // Analytical solution
+    Eigen::Vector<T, 3> axis = aaxis_ba / phi_ba;
+    const T sinphi_ba = sin(phi_ba);
+    const T cosphi_ba = cos(phi_ba);
+    return cosphi_ba * Eigen::Matrix<T, 3, 3>::Identity() +
+           (1.0 - cosphi_ba) * axis * axis.transpose() +
+           sinphi_ba * so3::hat(axis);
+
+  } else {
+    std::cout << "vec2rot numerical" << std::endl;
+    // Numerical solution (good for testing the analytical solution)
+    Eigen::Matrix<T, 3, 3> C_ab = Eigen::Matrix<T, 3, 3>::Identity();
+
+    // Incremental variables
+    Eigen::Matrix<T, 3, 3> x_small = so3::hat(aaxis_ba);
+    Eigen::Matrix<T, 3, 3> x_small_n = Eigen::Matrix<T, 3, 3>::Identity();
+
+    // Loop over sum up to the specified numTerms
+    for (unsigned int n = 1; n <= numTerms; n++) {
+      x_small_n = x_small_n * x_small / double(n);
+      C_ab += x_small_n;
+    }
+    return C_ab;
+  }
+}
 
 /**
  * \brief Compute the matrix log of a rotation matrix
@@ -116,9 +158,64 @@ void vec2rot(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(
-    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab,
-    const double eps = 1e-6);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Vector<AUTODIFF_VAR_TYPE, 3>>
+rot2vec(const Eigen::Matrix<T, 3, 3>& C_ab, const double eps = 1e-6) {
+  // Get angle
+  // Find the eigenvalues and eigenvectors
+  const T phi_ba = smooth_acos(clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
+  const T sinphi_ba = sin(phi_ba);
+
+  std::cout << "Phi_ba: " << phi_ba << std::endl;
+  std::cout << "sinphi_ba: " << sinphi_ba << std::endl;
+
+  if (fabs(sinphi_ba) > eps) {
+    std::cout << "General case" << std::endl;
+    // General case, angle is NOT near 0, pi, or 2*pi
+    Eigen::Vector<T, 3> axis;
+    axis << C_ab(2, 1) - C_ab(1, 2), C_ab(0, 2) - C_ab(2, 0),
+        C_ab(1, 0) - C_ab(0, 1);
+    return (0.5 * phi_ba / sinphi_ba) * axis;
+  } else if (fabs(phi_ba) > eps) {
+    // pi case
+    std::cout << "[WARNING]: Rot2Vec is not differentiable at pi. "
+                 "lgmath_autodiff does not support gradients of angles greater "
+                 "than pi. Gradients through this function call are zero."
+              << std::endl;
+    Eigen::Matrix3d R = C_ab.template cast<double>();
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigenSolver(R);
+
+    const auto eivalues = eigenSolver.eigenvalues();
+    const auto eivalues_imag = eivalues.imag();
+    const auto eivalues_real = eivalues.real();
+    const auto eivec = eigenSolver.eigenvectors();
+    const auto eivec_real = eivec.real();
+
+    // Try each eigenvalue
+    for (int i = 0; i < 3; i++) {
+      // Check if eigen value is near +1.0
+      if ((fabs(eivalues_imag(i)) < 1e-6) &&
+          (fabs(eivalues_real(i) - 1.0) < 1e-6)) {
+        // Get corresponding angle-axis
+        Eigen::Vector3d aaxis_ba = double(phi_ba) * eivec_real.col(i);
+        return static_cast<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 1>>(aaxis_ba);
+      }
+    }
+
+    // Runtime error
+    throw std::runtime_error(
+        "so3 logarithmic map failed to find an axis-angle, "
+        "angle was near pi, or 2*pi, but no eigenvalues were near 1");
+  } else {
+    std::cout << "zero case" << std::endl;
+    // Angle is near zero or 2*pi
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> aaxis_ba;
+    aaxis_ba << (-1.0 * C_ab(1, 2) + C_ab(2, 1)) / 2.0,
+        (C_ab(0, 2) - C_ab(2, 0)) / 2.0, (-1.0 * C_ab(0, 1) + C_ab(1, 0)) / 2.0;
+    return aaxis_ba;
+  }
+}
 
 /**
  * \brief Builds the 3x3 Jacobian matrix of SO(3)
@@ -135,9 +232,93 @@ Eigen::Vector<AUTODIFF_VAR_TYPE, 3> rot2vec(
  *
  * For more information see eq. 98 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-    unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2jac(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
+  // Get angle
+  const AUTODIFF_VAR_TYPE phi_ba = aaxis_ba.norm();
+  std::cout << "phi_ba: " << phi_ba << std::endl;
+  if (phi_ba < 1e-12) {
+    // If angle is very small, return Identity
+    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+           0.5 * hat(aaxis_ba);
+  }
+
+  // Numerical solution (good for testing the analytical solution)
+  Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> J_ab;
+
+  if (numTerms == 0) {
+    // Analytical solution
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> axis = aaxis_ba / phi_ba;
+    const AUTODIFF_VAR_TYPE sinTerm = sin(phi_ba) / phi_ba;
+    const AUTODIFF_VAR_TYPE cosTerm = (1.0 - cos(phi_ba)) / phi_ba;
+    J_ab = sinTerm * Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+           (1.0 - sinTerm) * axis * axis.transpose() + cosTerm * so3::hat(axis);
+  } else {
+    // Numerical solution (good for testing the analytical solution)
+    J_ab = Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+
+    // Incremental variables
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small = so3::hat(aaxis_ba);
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small_n =
+        Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+
+    // Loop over sum up to the specified numTerms
+    for (unsigned int n = 1; n <= numTerms; n++) {
+      x_small_n = x_small_n * x_small / double(n + 1);
+      J_ab += x_small_n;
+    }
+  }
+
+  if (fabs(M_PI - phi_ba) < 1e-6) {
+    std::cout << "[WARNING]: vec2jac is not differentiable at pi. "
+                 "lgmath_autodiff does not support gradients of angles greater "
+                 "than pi. Gradients through this function call are zero."
+              << std::endl;
+    // If angle is near pi, then the jacobian is not differentiable
+    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>(J_ab.cast<double>());
+  }
+  return J_ab;
+}
+
+/**
+ * \brief Builds and returns both the rotation matrix and SO(3) Jacobian
+ * \details
+ * Similar to the function 'vec2rot', this function builds a rotation matrix,
+ * C_ab, using an equivalent expression to the exponential map, but allows us
+ * to simultaneously extract the Jacobian of SO(3), which is also required in
+ * some cases.
+ *
+ *   J_ab = jac(aaxis_ba)
+ *   C_ab = exp(aaxis_ba^) = identity + aaxis_ba^ * J_ab
+ *
+ * For more information see eq. 97 in Barfoot-TRO-2014.
+ */
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void> vec2rot(
+    const Eigen::Vector<T, 3>& aaxis_ba, Eigen::Matrix<T, 3, 3>& out_C_ab,
+    Eigen::Matrix<T, 3, 3>& out_J_ab) {
+  // Set Jacobian term
+  out_J_ab = so3::vec2jac(aaxis_ba);
+
+  // Set rotation matrix
+  Eigen::Matrix<T, 3, 3> C_ab =
+      Eigen::Matrix<T, 3, 3>::Identity() + so3::hat(aaxis_ba) * out_J_ab;
+
+  const T phi_ba = aaxis_ba.norm();
+
+  if (fabs(M_PI - phi_ba) < 1e-6) {
+    std::cout << "[WARNING]: vec2rot is not differentiable at pi. "
+                 "lgmath_autodiff does not support gradients of angles greater "
+                 "than pi. Gradients through this function call are zero."
+              << std::endl;
+    // If angle is near pi, then the jacobian is not differentiable
+    out_C_ab = Eigen::Matrix<T, 3, 3>(C_ab.template cast<double>());
+  } else {
+    out_C_ab = C_ab;
+  }
+}
 
 /**
  * \brief Builds the 3x3 inverse Jacobian matrix of SO(3)
@@ -150,18 +331,74 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jac(
  *   J_ab_inverse = J(aaxis_ba)^{-1},
  *
  * although we note to the SO(3) novice that this Jacobian is not a rotation
- * matrix, and should be used with care. Also, please note that J_ab_inverse is
- * not equivalent to J_ba:
+ * matrix, and should be used with care. Also, please note that J_ab_inverse
+ * is not equivalent to J_ba:
  *
  *   J(aaxis_ba)^{-1} != J(-aaxis_ba)
  *
  * For more information see eq. 99 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2jacinv(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-    unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2jacinv(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
+  // Get angle
+  const AUTODIFF_VAR_TYPE phi_ba = aaxis_ba.norm();
+  std::cout << "phi_ba: " << phi_ba << std::endl;
+  if (phi_ba < 1e-12) {
+    // If angle is very small, return Identity
+    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() -
+           0.5 * hat(aaxis_ba);
+  }
 
-}  // namespace diff
+  Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> J_ab_inverse;
+
+  if (numTerms == 0) {
+    // Analytical solution
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> axis = aaxis_ba / phi_ba;
+    const AUTODIFF_VAR_TYPE halfphi = 0.5 * phi_ba;
+    const AUTODIFF_VAR_TYPE cotanTerm = halfphi / tan(halfphi);
+    J_ab_inverse =
+        cotanTerm * Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+        (1.0 - cotanTerm) * axis * axis.transpose() - halfphi * so3::hat(axis);
+  } else {
+    // Logic error
+    if (numTerms > 20) {
+      throw std::invalid_argument(
+          "Numerical vec2jacinv does not support numTerms > 20");
+    }
+
+    // Numerical solution (good for testing the analytical solution)
+    J_ab_inverse = Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+
+    // Incremental variables
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small = so3::hat(aaxis_ba);
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small_n =
+        Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+
+    // Boost has a bernoulli package... but we shouldn't need more than 20
+    Eigen::Matrix<double, 21, 1> bernoulli;
+    bernoulli << 1.0, -0.5, 1.0 / 6.0, 0.0, -1.0 / 30.0, 0.0, 1.0 / 42.0, 0.0,
+        -1.0 / 30.0, 0.0, 5.0 / 66.0, 0.0, -691.0 / 2730.0, 0.0, 7.0 / 6.0, 0.0,
+        -3617.0 / 510.0, 0.0, 43867.0 / 798.0, 0.0, -174611.0 / 330.0;
+
+    // Loop over sum up to the specified numTerms
+    for (unsigned int n = 1; n <= numTerms; n++) {
+      x_small_n = x_small_n * x_small / double(n);
+      J_ab_inverse += bernoulli(n) * x_small_n;
+    }
+  }
+
+  if (fabs(M_PI - phi_ba) < 1e-6) {
+    std::cout << "[WARNING]: vec2jacinv is not differentiable at pi. "
+                 "lgmath_autodiff does not support gradients of angles greater "
+                 "than pi. Gradients through this function call are zero."
+              << std::endl;
+    // If angle is near pi, then the inverse jacobian is not differentiable
+    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>(J_ab_inverse.cast<double>());
+  }
+  return J_ab_inverse;
+}
 }  // namespace so3
 }  // namespace lgmath
 #endif

@@ -13,7 +13,7 @@
 #if USE_AUTODIFF
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
-#endif 
+#endif
 
 namespace lgmath {
 namespace common {
@@ -84,31 +84,14 @@ bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
 }
 
 #if USE_AUTODIFF
-
-namespace diff {
-  
-bool nearEqual(autodiff::real a, autodiff::real b, double tol) {
+bool nearEqual(AUTODIFF_VAR_TYPE a, AUTODIFF_VAR_TYPE b, double tol) {
   return std::fabs(a.val() - b.val()) <= tol;
 }
 
-bool nearEqual(autodiff::MatrixXreal A, autodiff::MatrixXreal B, double tol) {
-  return common::nearEqual(A.cast<double>(), B.cast<double>(), tol);
-}
-
-bool nearEqualAngle(autodiff::real radA, autodiff::real radB, double tol) {
+bool nearEqualAngle(AUTODIFF_VAR_TYPE radA, AUTODIFF_VAR_TYPE radB,
+                    double tol) {
   return common::nearEqual(common::angleMod(radA.val() - radB.val()), 0.0, tol);
 }
-
-bool nearEqualAxisAngle(autodiff::Vector3real aaxis1,
-                        autodiff::Vector3real aaxis2, double tol) {
-  return common::nearEqualAxisAngle(aaxis1.cast<double>(), aaxis2.cast<double>(), tol);
-}
-
-bool nearEqualLieAlg(autodiff::VectorXreal vec1, autodiff::VectorXreal vec2,
-                     double tol) {
-  return common::nearEqualLieAlg(vec1.cast<double>(), vec2.cast<double>(), tol);
-}
-}  // namespace diff
 #endif
 
 }  // namespace common

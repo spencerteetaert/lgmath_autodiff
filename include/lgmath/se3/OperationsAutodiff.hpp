@@ -9,25 +9,26 @@
  */
 #pragma once
 
+#include <lgmath/so3/OperationsAutodiff.hpp>
+
 #include <Eigen/Core>
-#ifdef AUTODIFF_USE_FORWARD
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-#ifndef AUTODIFF_VAR_TYPE
-#define AUTODIFF_VAR_TYPE autodiff::real1st
-#endif
-#else
+#ifdef AUTODIFF_USE_BACKWARD
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
 #ifndef AUTODIFF_VAR_TYPE
 #define AUTODIFF_VAR_TYPE autodiff::var
+#endif
+#else
+#include <autodiff/forward/real.hpp>
+#include <autodiff/forward/real/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::real1st
 #endif
 #endif
 
 /// Lie Group Math - Special Euclidean Group
 namespace lgmath {
 namespace se3 {
-namespace diff {
 /**
  * \brief Builds the 4x4 "skew symmetric matrix"
  * \details
@@ -41,9 +42,16 @@ namespace diff {
  *
  * See eq. 4 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> hat(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis);
+
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>>
+hat(const Eigen::Vector<T, 3>& rho, const Eigen::Vector<T, 3>& aaxis) {
+  Eigen::Matrix<T, 4, 4> mat = Eigen::Matrix<T, 4, 4>::Zero();
+  mat.template topLeftCorner<3, 3>() = so3::hat<T>(aaxis);
+  mat.template topRightCorner<3, 1>() = rho;
+  return mat;
+}
 
 /**
  * \brief Builds the 4x4 "skew symmetric matrix"
@@ -58,8 +66,13 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> hat(
  *
  * See eq. 4 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> hat(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>>
+hat(const Eigen::Vector<T, 6>& xi) {
+  assert(xi.size() == 6);
+  return se3::hat<T>(xi.template head<3>(), xi.template tail<3>());
+}
 
 /**
  * \brief Builds the 6x6 "curly hat" matrix (related to the skew symmetric
@@ -73,9 +86,17 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> hat(
  *
  * See eq. 12 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> curlyhat(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+curlyhat(const Eigen::Vector<T, 3>& rho, const Eigen::Vector<T, 3>& aaxis) {
+  Eigen::Matrix<T, 6, 6> mat(6, 6);
+  mat.setZero();
+  mat.template topLeftCorner<3, 3>() = mat.template bottomRightCorner<3, 3>() =
+      so3::hat<T>(aaxis);
+  mat.template topRightCorner<3, 3>() = so3::hat<T>(rho);
+  return mat;
+}
 
 /**
  * \brief Builds the 6x6 "curly hat" matrix (related to the skew symmetric
@@ -89,8 +110,13 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> curlyhat(
  *
  * See eq. 12 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> curlyhat(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+curlyhat(const Eigen::Vector<T, 6>& xi) {
+  assert(xi.size() == 6);
+  return curlyhat<T>(xi.template head<3>(), xi.template tail<3>());
+}
 
 /**
  * \brief Turns a homogeneous point into a special 4x6 matrix (circle-dot
@@ -98,8 +124,20 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> curlyhat(
  * \details
  * See eq. 72 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6> point2fs(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& p, double scale = 1);
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6>>
+point2fs(const Eigen::MatrixBase<Derived>& p,
+         typename Derived::Scalar scale = typename Derived::Scalar(1)) {
+  assert(p.rows() == 3 && p.cols() == 1);
+  Eigen::Matrix<typename Derived::Scalar, 4, 6> mat =
+      Eigen::Matrix<typename Derived::Scalar, 4, 6>::Zero();
+  mat.template topLeftCorner<3, 3>() =
+      scale * Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
+  mat.template topRightCorner<3, 3>() = -so3::hat<typename Derived::Scalar>(p);
+  return mat;
+}
 
 /**
  * \brief Turns a homogeneous point into a special 6x4 matrix (double-circle
@@ -107,8 +145,20 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6> point2fs(
  *
  * See eq. 72 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 4> point2sf(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& p, double scale = 1);
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 4>>
+point2sf(const Eigen::MatrixBase<Derived>& p,
+         typename Derived::Scalar scale = typename Derived::Scalar(1)) {
+  assert(p.rows() == 3 && p.cols() == 1);
+  Eigen::Matrix<typename Derived::Scalar, 6, 4> mat =
+      Eigen::Matrix<typename Derived::Scalar, 6, 4>::Zero();
+  mat.template bottomLeftCorner<3, 3>() =
+      -so3::hat<typename Derived::Scalar>(p);
+  mat.template topRightCorner<3, 1>() = p;
+  return mat;
+}
 
 /**
  * \brief Builds a transformation matrix using the analytical exponential map
@@ -142,10 +192,42 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 4> point2sf(
  * Both the analytical (numTerms = 0) or the numerical (numTerms > 0) may be
  * evaluated.
  */
-void vec2tran_analytical(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
-                         const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-                         Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
-                         Eigen::Vector<AUTODIFF_VAR_TYPE, 3>* out_r_ba_ina);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void>
+vec2tran_analytical(const Eigen::Vector<T, 3>& rho_ba,
+                    const Eigen::Vector<T, 3>& aaxis_ba,
+                    Eigen::Matrix<T, 3, 3>& out_C_ab,
+                    Eigen::Vector<T, 3>& out_r_ba_ina) {
+  if (aaxis_ba.norm() < 1e-12) {
+    // If angle is very small, rotation is Identity
+    out_C_ab = Eigen::Matrix<T, 3, 3>::Identity() + so3::hat<T>(aaxis_ba);
+    out_r_ba_ina = out_C_ab * rho_ba;
+  } else {
+    // Normal analytical solution
+    Eigen::Matrix<T, 3, 3> J_ab;
+
+    // Use rotation identity involving jacobian, as we need it to
+    // convert rho_ba to the proper translation
+    so3::vec2rot<T>(aaxis_ba, out_C_ab, J_ab);
+
+    // Convert rho_ba (twist-translation) to r_ba_ina
+    Eigen::Matrix<T, 3, 1> out_r = J_ab * rho_ba;
+
+    const T phi_ba = aaxis_ba.norm();
+
+    if (fabs(M_PI - phi_ba) < 1e-6) {
+      std::cout
+          << "[WARNING]: vec2tran is not differentiable at pi. "
+             "lgmath_autodiff does not support gradients of angles greater "
+             "than pi. Gradients through this function call are zero."
+          << std::endl;
+      // If angle is near pi, then the jacobian is not differentiable
+      out_r_ba_ina = Eigen::Matrix<T, 3, 1>(out_r.template cast<double>());
+    } else {
+      out_r_ba_ina = out_r;
+    }
+  }
+}
 
 /**
  * \brief Builds a transformation matrix using the first N terms of the
@@ -156,28 +238,73 @@ void vec2tran_analytical(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
  *
  * For more information see eq. 96 in Barfoot-TRO-2014
  */
-void vec2tran_numerical(const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
-                        const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba,
-                        Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
-                        Eigen::Vector<AUTODIFF_VAR_TYPE, 3>* out_r_ba_ina,
-                        unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void>
+vec2tran_numerical(const Eigen::Vector<T, 3>& rho_ba,
+                   const Eigen::Vector<T, 3>& aaxis_ba,
+                   Eigen::Matrix<T, 3, 3>& out_C_ab,
+                   Eigen::Vector<T, 3>& out_r_ba_ina,
+                   unsigned int numTerms = 0) {
+  // Init 4x4 transformation
+  Eigen::Matrix<T, 4, 4> T_ab = Eigen::Matrix<T, 4, 4>::Identity();
+
+  // Incremental variables
+  Eigen::Vector<T, 6> xi_ba(6);
+  xi_ba << rho_ba, aaxis_ba;
+  Eigen::Matrix<T, 4, 4> x_small = se3::hat(xi_ba);
+  Eigen::Matrix<T, 4, 4> x_small_n = Eigen::Matrix<T, 4, 4>::Identity();
+
+  // Loop over sum up to the specified numTerms
+  for (unsigned int n = 1; n <= numTerms; n++) {
+    x_small_n = x_small_n * x_small / double(n);
+    T_ab += x_small_n;
+  }
+
+  // Fill output
+  out_C_ab = T_ab.template topLeftCorner<3, 3>();
+  out_r_ba_ina = T_ab.template topRightCorner<3, 1>();
+}
 
 /**
  * \brief Builds the 3x3 rotation and 3x1 translation using the exponential
  * map, the default parameters (numTerms = 0) use the analytical solution.
  */
-void vec2tran(const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
-              Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>* out_C_ab,
-              Eigen::Vector<AUTODIFF_VAR_TYPE, 3>* out_r_ba_ina,
-              unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void> vec2tran(
+    const Eigen::Vector<T, 6>& xi_ba, Eigen::Matrix<T, 3, 3>& out_C_ab,
+    Eigen::Vector<T, 3>& out_r_ba_ina, unsigned int numTerms = 0) {
+  assert(xi_ba.size() == 6);
+  if (numTerms == 0) {
+    // Analytical solution
+    vec2tran_analytical<T>(xi_ba.template head<3>(), xi_ba.template tail<3>(),
+                           out_C_ab, out_r_ba_ina);
+  } else {
+    // Numerical solution (good for testing the analytical solution)
+    vec2tran_numerical<T>(xi_ba.template head<3>(), xi_ba.template tail<3>(),
+                          out_C_ab, out_r_ba_ina, numTerms);
+  }
+}
 
 /**
  * \brief Builds a 4x4 transformation matrix using the exponential map, the
  * default parameters (numTerms = 0) use the analytical solution.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> vec2tran(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
-    unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>>
+vec2tran(const Eigen::Vector<T, 6>& xi_ba, unsigned int numTerms = 0) {
+  assert(xi_ba.size() == 6);
+  // Get rotation and translation
+  Eigen::Matrix<T, 3, 3> C_ab;
+  Eigen::Vector<T, 3> r_ba_ina;
+  vec2tran(xi_ba, C_ab, r_ba_ina, numTerms);
+
+  // Fill output
+  Eigen::Matrix<T, 4, 4> T_ab = Eigen::Matrix<T, 4, 4>::Identity();
+  T_ab.template topLeftCorner<3, 3>() = C_ab;
+  T_ab.template topRightCorner<3, 1>() = r_ba_ina;
+  return T_ab;
+}
 
 /**
  * \brief Compute the matrix log of a transformation matrix (from the rotation
@@ -197,9 +324,24 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> vec2tran(
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-Eigen::Vector<AUTODIFF_VAR_TYPE, 6> tran2vec(
-    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& r_ba_ina);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Vector<AUTODIFF_VAR_TYPE, 6>>
+tran2vec(const Eigen::Matrix<T, 3, 3>& C_ab,
+         const Eigen::Vector<T, 3>& r_ba_ina) {
+  // Init
+  Eigen::Vector<T, 6> xi_ba(6);
+
+  // Get axis angle from rotation matrix
+  Eigen::Vector<T, 3> aaxis_ba = so3::rot2vec<T>(C_ab);
+
+  // Get twist-translation vector using Jacobian
+  Eigen::Vector<T, 3> rho_ba = so3::vec2jacinv<T>(aaxis_ba) * r_ba_ina;
+
+  // Return se3 algebra vector
+  xi_ba << rho_ba, aaxis_ba;
+  return xi_ba;
+}
 
 /**
  * \brief Compute the matrix log of a transformation matrix
@@ -218,8 +360,13 @@ Eigen::Vector<AUTODIFF_VAR_TYPE, 6> tran2vec(
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-Eigen::Vector<AUTODIFF_VAR_TYPE, 6> tran2vec(
-    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>& T_ab);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Vector<AUTODIFF_VAR_TYPE, 6>>
+tran2vec(const Eigen::Matrix<T, 4, 4>& T_ab) {
+  return tran2vec<T>(T_ab.template topLeftCorner<3, 3>(),
+                     T_ab.template topRightCorner<3, 1>());
+}
 
 /**
  * \brief Builds the 6x6 adjoint transformation matrix from the 3x3 rotation
@@ -234,9 +381,19 @@ Eigen::Vector<AUTODIFF_VAR_TYPE, 6> tran2vec(
  *
  * See eq. 101 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> tranAd(
-    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>& C_ab,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& r_ba_ina);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+tranAd(const Eigen::Matrix<T, 3, 3>& C_ab,
+       const Eigen::Vector<T, 3>& r_ba_ina) {
+  Eigen::Matrix<T, 6, 6> adjoint_T_ab(6, 6);
+  adjoint_T_ab.setZero();
+
+  adjoint_T_ab.template topLeftCorner<3, 3>() =
+      adjoint_T_ab.template bottomRightCorner<3, 3>() = C_ab;
+  adjoint_T_ab.template topRightCorner<3, 3>() = so3::hat<T>(r_ba_ina) * C_ab;
+  return adjoint_T_ab;
+}
 
 /**
  * \brief Builds the 6x6 adjoint transformation matrix from a 4x4 one
@@ -249,25 +406,60 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> tranAd(
  *
  * See eq. 101 in Barfoot-TRO-2014 for more information.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> tranAd(
-    const Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>& T_ab);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+tranAd(const Eigen::Matrix<T, 4, 4>& T_ab) {
+  return tranAd<T>(T_ab.template topLeftCorner<3, 3>(),
+                   T_ab.template topRightCorner<3, 1>());
+}
 
 /**
  * \brief Construction of the 3x3 "Q" matrix, used in the 6x6 Jacobian of SE(3)
  * \details
  * See eq. 102 in Barfoot-TRO-2014 for more information
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2Q(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2Q(const Eigen::Vector<T, 3>& rho_ba, const Eigen::Vector<T, 3>& aaxis_ba) {
+  // Construct scalar terms
+  const T ang = aaxis_ba.norm();
+  const T ang2 = ang * ang;
+  const T ang3 = ang2 * ang;
+  const T ang4 = ang3 * ang;
+  const T ang5 = ang4 * ang;
+  const T cang = cos(ang);
+  const T sang = sin(ang);
+  const T m2 = (ang - sang) / ang3;
+  const T m3 = (1.0 - 0.5 * ang2 - cang) / ang4;
+  const T m4 = 0.5 * (m3 - 3 * (ang - sang - ang3 / 6) / ang5);
+
+  // Construct matrix terms
+  Eigen::Matrix<T, 3, 3> rx = so3::hat<T>(rho_ba);
+  Eigen::Matrix<T, 3, 3> px = so3::hat<T>(aaxis_ba);
+  Eigen::Matrix<T, 3, 3> pxrx = px * rx;
+  Eigen::Matrix<T, 3, 3> rxpx = rx * px;
+  Eigen::Matrix<T, 3, 3> pxrxpx = pxrx * px;
+
+  // Construct Q matrix
+  return 0.5 * rx + m2 * (pxrx + rxpx + pxrxpx) -
+         m3 * (px * pxrx + rxpx * px - 3 * pxrxpx) -
+         m4 * (pxrxpx * px + px * pxrxpx);
+}
 
 /**
  * \brief Construction of the 3x3 "Q" matrix, used in the 6x6 Jacobian of SE(3)
  * \details
  * See eq. 102 in Barfoot-TRO-2014 for more information
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2Q(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2Q(const Eigen::Vector<T, 6>& xi_ba) {
+  assert(xi_ba.size() == 6);
+  return vec2Q<T>(xi_ba.template head<3>(), xi_ba.template tail<3>());
+}
 
 /**
  * \brief Builds the 6x6 Jacobian matrix of SE(3) using the analytical
@@ -290,9 +482,28 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> vec2Q(
  *
  * For more information see eq. 100 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jac(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+vec2jac(const Eigen::Vector<T, 3>& rho_ba,
+        const Eigen::Vector<T, 3>& aaxis_ba) {  // Init
+  Eigen::Matrix<T, 6, 6> J_ab(6, 6);
+  J_ab.setZero();
+
+  if (aaxis_ba.norm() < 1e-12) {
+    // If angle is very small, so3 jacobian is Identity
+    J_ab.template topLeftCorner<3, 3>() =
+        J_ab.template bottomRightCorner<3, 3>() =
+            Eigen::Matrix<T, 3, 3>::Identity() + 0.5 * so3::hat<T>(aaxis_ba);
+    J_ab.template topRightCorner<3, 3>() = 0.5 * so3::hat<T>(rho_ba);
+  } else {
+    // General analytical scenario
+    J_ab.template topLeftCorner<3, 3>() =
+        J_ab.template bottomRightCorner<3, 3>() = so3::vec2jac<T>(aaxis_ba);
+    J_ab.template topRightCorner<3, 3>() = se3::vec2Q<T>(rho_ba, aaxis_ba);
+  }
+  return J_ab;
+}
 
 /**
  * \brief Builds the 6x6 Jacobian matrix of SE(3) from the se(3) algebra; note
@@ -301,9 +512,32 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jac(
  * \details
  * For more information see eq. 100 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jac(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
-    unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+vec2jac(const Eigen::Vector<T, 6>& xi_ba, unsigned int numTerms = 0) {
+  assert(xi_ba.size() == 6);
+  if (numTerms == 0) {
+    // Analytical solution
+    return vec2jac<T>(xi_ba.template head<3>(), xi_ba.template tail<3>());
+  } else {
+    // Numerical solution (good for testing the analytical solution)
+    Eigen::Matrix<T, 6, 6> J_ab(6, 6);
+    J_ab.setIdentity();
+
+    // Incremental variables
+    Eigen::Matrix<T, 6, 6> x_small = se3::curlyhat<T>(xi_ba);
+    Eigen::Matrix<T, 6, 6> x_small_n(6, 6);
+    x_small_n.setIdentity();
+
+    // Loop over sum up to the specified numTerms
+    for (unsigned int n = 1; n <= numTerms; n++) {
+      x_small_n = x_small_n * x_small / double(n + 1);
+      J_ab += x_small_n;
+    }
+    return J_ab;
+  }
+}
 
 /**
  * \brief Builds the 6x6 inverse Jacobian matrix of SE(3) using the analytical
@@ -322,9 +556,31 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jac(
  *
  * For more information see eq. 103 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jacinv(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& rho_ba,
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 3>& aaxis_ba);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+vec2jacinv(const Eigen::Vector<T, 3>& rho_ba,
+           const Eigen::Vector<T, 3>& aaxis_ba) {
+  // Init
+  Eigen::Matrix<T, 6, 6> J66_ab_inv(6, 6);
+  J66_ab_inv.setZero();
+
+  if (aaxis_ba.norm() < 1e-12) {
+    // If angle is very small, so3 jacobian is Identity
+    J66_ab_inv.template topLeftCorner<3, 3>() =
+        J66_ab_inv.template bottomRightCorner<3, 3>() =
+            Eigen::Matrix<T, 3, 3>::Identity() - 0.5 * so3::hat<T>(aaxis_ba);
+    J66_ab_inv.template topRightCorner<3, 3>() = -0.5 * so3::hat<T>(rho_ba);
+  } else {
+    // General analytical scenario
+    Eigen::Matrix<T, 3, 3> J33_ab_inv = so3::vec2jacinv<T>(aaxis_ba);
+    J66_ab_inv.template topLeftCorner<3, 3>() =
+        J66_ab_inv.template bottomRightCorner<3, 3>() = J33_ab_inv;
+    J66_ab_inv.template topRightCorner<3, 3>() =
+        -J33_ab_inv * se3::vec2Q<T>(rho_ba, aaxis_ba) * J33_ab_inv;
+  }
+  return J66_ab_inv;
+}
 
 /**
  * \brief Builds the 6x6 inverse Jacobian matrix of SE(3) from the se(3)
@@ -334,11 +590,45 @@ Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jacinv(
  * \details
  * For more information see eq. 103 in Barfoot-TRO-2014.
  */
-Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> vec2jacinv(
-    const Eigen::Vector<AUTODIFF_VAR_TYPE, 6>& xi_ba,
-    unsigned int numTerms = 0);
+template <typename T>
+std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
+                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+vec2jacinv(const Eigen::Vector<T, 6>& xi_ba, unsigned int numTerms = 0) {
+  assert(xi_ba.size() == 6);
+  if (numTerms == 0) {
+    // Analytical solution
+    return vec2jacinv<T>(xi_ba.template head<3>(), xi_ba.template tail<3>());
+  } else {
+    // Logic error
+    if (numTerms > 20) {
+      throw std::invalid_argument(
+          "Numerical vec2jacinv does not support numTerms > 20");
+    }
 
-}  // namespace diff
+    // Numerical solution (good for testing the analytical solution)
+    Eigen::Matrix<T, 6, 6> J_ab(6, 6);
+    J_ab.setIdentity();
+
+    // Incremental variables
+    Eigen::Matrix<T, 6, 6> x_small = se3::curlyhat<T>(xi_ba);
+    Eigen::Matrix<T, 6, 6> x_small_n(6, 6);
+    x_small_n.setIdentity();
+
+    // Boost has a bernoulli package... but we shouldn't need more than 20
+    Eigen::Matrix<double, 21, 1> bernoulli;
+    bernoulli << 1.0, -0.5, 1.0 / 6.0, 0.0, -1.0 / 30.0, 0.0, 1.0 / 42.0, 0.0,
+        -1.0 / 30.0, 0.0, 5.0 / 66.0, 0.0, -691.0 / 2730.0, 0.0, 7.0 / 6.0, 0.0,
+        -3617.0 / 510.0, 0.0, 43867.0 / 798.0, 0.0, -174611.0 / 330.0;
+
+    // Loop over sum up to the specified numTerms
+    for (unsigned int n = 1; n <= numTerms; n++) {
+      x_small_n = x_small_n * x_small / double(n);
+      J_ab += bernoulli(n) * x_small_n;
+    }
+    return J_ab;
+  }
+}
+
 }  // namespace se3
 }  // namespace lgmath
 #endif

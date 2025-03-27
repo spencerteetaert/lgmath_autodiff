@@ -20,12 +20,12 @@
 #include <lgmath/so3/Operations.hpp>
 #include <lgmath/so3/OperationsAutodiff.hpp>
 
-#ifdef AUTODIFF_USE_FORWARD
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-#else
+#ifdef AUTODIFF_USE_BACKWARD
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
+#else
+#include <autodiff/forward/real.hpp>
+#include <autodiff/forward/real/eigen.hpp>
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +60,7 @@ TEST(LGMathAutodiff, Test3x3HatFunction) {
         trueVecs.at(i).cast<AUTODIFF_VAR_TYPE>();
 
     Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> testMatAutodiff(3, 3);
-    testMatAutodiff = lgmath::so3::diff::hat(vec);
+    testMatAutodiff = lgmath::so3::hat(vec);
 
     Eigen::Matrix<double, 3, 3> testMat = testMatAutodiff.cast<double>();
 
@@ -70,13 +70,13 @@ TEST(LGMathAutodiff, Test3x3HatFunction) {
   }
 }
 
-
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief General test of exponential functions: vec2rot and rot2vec
 /////////////////////////////////////////////////////////////////////////////////////////////
-TEST(LGMathAutodiff, CompareAnalyticalAndNumericVec2Rot) {
+TEST(LGMathAutodiff, CompareSO3Vec2RotAndRot2Vec) {
   // Add vectors to be tested
   std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 3>> trueVecs;
+  std::vector<Eigen::Matrix<double, 3, 3>> trueMats;
   Eigen::Vector<AUTODIFF_VAR_TYPE, 3> temp(3);
   temp << 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
@@ -107,34 +107,73 @@ TEST(LGMathAutodiff, CompareAnalyticalAndNumericVec2Rot) {
 
   // Get number of tests
   const unsigned numTests = trueVecs.size();
-
-  // Calc matrices
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>> analyticRots;
   for (unsigned i = 0; i < numTests; i++) {
-    analyticRots.push_back(lgmath::so3::diff::vec2rot(trueVecs.at(i)));
+    Eigen::Matrix<double, 3, 3> mat =
+        lgmath::so3::vec2rot(trueVecs.at(i).cast<double>());
+    trueMats.push_back(mat);
   }
 
-  // Compare analytical and numeric result
+  // Compare analytical vec2rot
   {
+    std::cout << "\n\nCompare analytical vec2rot\n";
     for (unsigned i = 0; i < numTests; i++) {
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericTran =
-          lgmath::so3::diff::vec2rot(trueVecs.at(i), 20);
-      std::cout << "ana: " << analyticRots.at(i) << std::endl;
-      std::cout << "num: " << numericTran << std::endl;
-      EXPECT_TRUE(lgmath::common::diff::nearEqual(analyticRots.at(i),
-                                                  numericTran, 1e-6));
+      Eigen::Matrix<double, 3, 3> numericRot =
+          lgmath::so3::vec2rot(trueVecs.at(i).cast<double>());
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericRotDiff =
+          lgmath::so3::vec2rot(trueVecs.at(i));
+      std::cout << "non-diff: " << numericRot << std::endl;
+      std::cout << "diff: " << numericRotDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          numericRot, numericRotDiff.cast<double>(), 1e-6));
     }
   }
 
-  // Test rot2vec
+  // Compare alternate vec2rot
   {
+    std::cout << "\n\nCompare alternate vec2rot\n";
     for (unsigned i = 0; i < numTests; i++) {
-      Eigen::Vector<AUTODIFF_VAR_TYPE, 3> testVec =
-          lgmath::so3::diff::rot2vec(analyticRots.at(i));
-      std::cout << "true: " << trueVecs.at(i) << std::endl;
-      std::cout << "func: " << testVec << std::endl;
-      EXPECT_TRUE(
-          lgmath::common::diff::nearEqualAxisAngle(trueVecs.at(i), testVec, 1e-6));
+      Eigen::Matrix<double, 3, 3> rot, jac;
+      lgmath::so3::vec2rot(trueVecs.at(i).cast<double>(), &rot, &jac);
+
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> rotDiff, jacDiff;
+      lgmath::so3::vec2rot(trueVecs.at(i), rotDiff, jacDiff);
+      std::cout << "non-diff rot: " << rot << std::endl;
+      std::cout << "diff rot: " << rotDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(rot, rotDiff.cast<double>(), 1e-6));
+      std::cout << "non-diff jac: " << jac << std::endl;
+      std::cout << "diff jac: " << jacDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(jac, jacDiff.cast<double>(), 1e-6));
+    }
+  }
+
+  // Compare numeric vec2rot
+  {
+    std::cout << "\n\nCompare numeric vec2rot\n";
+    for (unsigned i = 0; i < numTests; i++) {
+      Eigen::Matrix<double, 3, 3> numericRot =
+          lgmath::so3::vec2rot(trueVecs.at(i).cast<double>(), 20);
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericRotDiff =
+          lgmath::so3::vec2rot(trueVecs.at(i), 20);
+      std::cout << "non-diff numeric: " << numericRot << std::endl;
+      std::cout << "diff numeric: " << numericRotDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          numericRot, numericRotDiff.cast<double>(), 1e-6));
+    }
+  }
+
+  // Compare rot2vec
+  {
+    std::cout << "\n\nCompare rot2vec\n";
+    for (unsigned i = 0; i < numTests; i++) {
+      Eigen::Matrix<double, 3, 1> numericVec =
+          lgmath::so3::rot2vec(trueMats.at(i));
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 1> numericVecDiff =
+          lgmath::so3::rot2vec(
+              Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>(trueMats.at(i)));
+      std::cout << "non-diff numeric: " << numericVec << std::endl;
+      std::cout << "diff numeric: " << numericVecDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          numericVec, numericVecDiff.cast<double>(), 1e-6));
     }
   }
 }
@@ -142,7 +181,7 @@ TEST(LGMathAutodiff, CompareAnalyticalAndNumericVec2Rot) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief General test of exponential jacobians: vec2jac and vec2jacinv
 /////////////////////////////////////////////////////////////////////////////////////////////
-TEST(LGMathAutodiff, CompareAnalyticalJacobInvAndNumericCounterpartsInSO3) {
+TEST(LGMathAutodiff, CompareSO3Vec2JacAndVec2JacInv) {
   // Add vectors to be tested
   std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 3>> trueVecs;
   Eigen::Vector<AUTODIFF_VAR_TYPE, 3> temp(3);
@@ -176,47 +215,67 @@ TEST(LGMathAutodiff, CompareAnalyticalJacobInvAndNumericCounterpartsInSO3) {
   // Get number of tests
   const unsigned numTests = trueVecs.size();
 
-  // Calc analytical matrices
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>> analyticJacs;
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>> analyticJacInvs;
-  for (unsigned i = 0; i < numTests; i++) {
-    analyticJacs.push_back(lgmath::so3::diff::vec2jac(trueVecs.at(i)));
-    analyticJacInvs.push_back(lgmath::so3::diff::vec2jacinv(trueVecs.at(i)));
+  // Compare analytical vec2jac
+  {
+    for (unsigned i = 0; i < numTests; i++) {
+      Eigen::Matrix<double, 3, 3> analyticJac =
+          lgmath::so3::vec2jac(trueVecs.at(i).cast<double>());
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> analyticJacDiff =
+          lgmath::so3::vec2jac(trueVecs.at(i));
+      std::cout << "non-diff: " << analyticJac << std::endl;
+      std::cout << "diff: " << analyticJacDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          analyticJac, analyticJacDiff.cast<double>(), 1e-6));
+    }
   }
 
-  // Compare inversed analytical and analytical inverse
-  for (unsigned i = 0; i < numTests; i++) {
-    std::cout << "ana: " << analyticJacs.at(i) << std::endl;
-    std::cout << "num: " << analyticJacInvs.at(i) << std::endl;
-    EXPECT_TRUE(lgmath::common::diff::nearEqual(analyticJacs.at(i).inverse(),
-                                                analyticJacInvs.at(i), 1e-6));
+  // Compare numeric vec2jac
+  {
+    for (unsigned i = 0; i < numTests; i++) {
+      Eigen::Matrix<double, 3, 3> numericJac =
+          lgmath::so3::vec2jac(trueVecs.at(i).cast<double>(), 20);
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericJacDiff =
+          lgmath::so3::vec2jac(trueVecs.at(i), 20);
+      std::cout << "non-diff: " << numericJac << std::endl;
+      std::cout << "diff: " << numericJacDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          numericJac, numericJacDiff.cast<double>(), 1e-6));
+    }
   }
 
-  // Compare analytical and 'numerical' jacobian
-  for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericJac(3, 3);
-    numericJac = lgmath::so3::vec2jac(trueVecs.at(i), 20);
-    std::cout << "ana: " << analyticJacs.at(i) << std::endl;
-    std::cout << "num: " << numericJac << std::endl;
-    EXPECT_TRUE(
-        lgmath::common::diff::nearEqual(analyticJacs.at(i), numericJac, 1e-6));
+  // Compare analytic vec2jacinv
+  {
+    for (unsigned i = 0; i < numTests; i++) {
+      Eigen::Matrix<double, 3, 3> analyticJacInv =
+          lgmath::so3::vec2jacinv(trueVecs.at(i).cast<double>());
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> analyticJacInvDiff =
+          lgmath::so3::vec2jacinv(trueVecs.at(i));
+      std::cout << "non-diff: " << analyticJacInv << std::endl;
+      std::cout << "diff: " << analyticJacInvDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          analyticJacInv, analyticJacInvDiff.cast<double>(), 1e-6));
+    }
   }
 
-  // Compare analytical and 'numerical' jacobian inverses
-  for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericJac(3, 3);
-    numericJac = lgmath::so3::vec2jacinv(trueVecs.at(i), 20);
-    std::cout << "ana: " << analyticJacInvs.at(i) << std::endl;
-    std::cout << "num: " << numericJac << std::endl;
-    EXPECT_TRUE(lgmath::common::diff::nearEqual(analyticJacInvs.at(i),
-                                                numericJac, 1e-6));
+  // Compare numeric vec2jacinv
+  {
+    for (unsigned i = 0; i < numTests; i++) {
+      Eigen::Matrix<double, 3, 3> numericJacInv =
+          lgmath::so3::vec2jacinv(trueVecs.at(i).cast<double>(), 20);
+      Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> numericJacInvDiff =
+          lgmath::so3::vec2jacinv(trueVecs.at(i), 20);
+      std::cout << "non-diff: " << numericJacInv << std::endl;
+      std::cout << "diff: " << numericJacInvDiff << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(
+          numericJacInv, numericJacInvDiff.cast<double>(), 1e-6));
+    }
   }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief General test of differentiability. f = J(xi) varpi, tests df/dvarpi 
+/// \brief General test of differentiability. f = J(xi) varpi, tests df/dvarpi
 /////////////////////////////////////////////////////////////////////////////////////////////
-TEST(LGMathAutodiff, TestDerivative1) {
+TEST(LGMathAutodiff, TestSO3Derivative1) {
   const unsigned numTests = 20;
 
   std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 3>> xis;
@@ -233,46 +292,44 @@ TEST(LGMathAutodiff, TestDerivative1) {
     varpis.push_back(rand);
   }
 
-  autodiff::Matrix2real test;
-
   auto func = [](const Eigen::Vector<AUTODIFF_VAR_TYPE, 3> &xi,
                  const Eigen::Vector<AUTODIFF_VAR_TYPE, 3> &varpi)
       -> Eigen::Vector<AUTODIFF_VAR_TYPE, 3> {
-    return lgmath::so3::diff::vec2jac(xi) * varpi;
+    return lgmath::so3::vec2jac(xi) * varpi;
   };
 
   std::cout << varpis.at(0) << std::endl;
 
   for (unsigned i = 0; i < numTests; i++) {
-#ifdef AUTODIFF_USE_FORWARD
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> F;
-
-    auto func_jacobian =
-        autodiff::jacobian(func, autodiff::wrt(varpis.at(i)),
-                           autodiff::at(xis.at(i), varpis.at(i)), F);
-#else
+#ifdef AUTODIFF_USE_BACKWARD
     Eigen::Vector<AUTODIFF_VAR_TYPE, 3> u = func(xis.at(i), varpis.at(i));
     Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> func_jacobian;
     for (int n = 0; n < 3; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), varpis.at(i));
     }
+#else
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> F;
+
+    auto func_jacobian =
+        autodiff::jacobian(func, autodiff::wrt(varpis.at(i)),
+                           autodiff::at(xis.at(i), varpis.at(i)), F);
 #endif
-    auto expected = lgmath::so3::diff::vec2jac(xis.at(i));
+    auto expected = lgmath::so3::vec2jac(xis.at(i));
 
     std::cout << "expected: " << expected << std::endl;
     std::cout << "returned grad: " << func_jacobian << std::endl;
-    EXPECT_TRUE(lgmath::common::diff::nearEqual(expected, func_jacobian, 1e-6));
+    EXPECT_TRUE(lgmath::common::nearEqual(expected.cast<double>(),
+                                          func_jacobian, 1e-6));
   }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-/// \brief General test of differentiability of simple functions. f = rot2vec(vec2rot(xi)), tests df/dxi
+/// \brief General test of differentiability of simple functions. f =
+/// rot2vec(vec2rot(xi)), tests df/dxi
 /////////////////////////////////////////////////////////////////////////////////////////////
-TEST(LGMathAutodiff, TestDerivative2) {
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 1> > xis;
+TEST(LGMathAutodiff, TestSO3Derivative2) {
+  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 1>> xis;
   Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 1> temp;
-  temp << 0.0, 0.0, 0.0;
-  xis.push_back(temp);
   temp << lgmath::constants::PI, 0.0, 0.0;
   xis.push_back(temp);
   temp << 0.0, lgmath::constants::PI, 0.0;
@@ -285,23 +342,13 @@ TEST(LGMathAutodiff, TestDerivative2) {
   xis.push_back(temp);
   temp << 0.0, 0.0, -lgmath::constants::PI;
   xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0;
+  xis.push_back(temp);
   temp << lgmath::constants::PI_DIV_TWO, 0.0, 0.0;
   xis.push_back(temp);
   temp << 0.0, lgmath::constants::PI_DIV_TWO, 0.0;
   xis.push_back(temp);
   temp << 0.0, 0.0, lgmath::constants::PI_DIV_TWO;
-  xis.push_back(temp);
-  temp << lgmath::constants::TWO_PI, 0.0, 0.0;
-  xis.push_back(temp);
-  temp << 0.0, lgmath::constants::TWO_PI, 0.0;
-  xis.push_back(temp);
-  temp << 0.0, 0.0, lgmath::constants::TWO_PI;
-  xis.push_back(temp);
-  temp << -lgmath::constants::TWO_PI, 0.0, 0.0;
-  xis.push_back(temp);
-  temp << 0.0, -lgmath::constants::TWO_PI, 0.0;
-  xis.push_back(temp);
-  temp << 0.0, 0.0, -lgmath::constants::TWO_PI;
   xis.push_back(temp);
   const unsigned numRand = 20;
   for (unsigned i = 0; i < numRand; i++) {
@@ -312,28 +359,34 @@ TEST(LGMathAutodiff, TestDerivative2) {
 
   auto func = [](const Eigen::Vector<AUTODIFF_VAR_TYPE, 3> &xi)
       -> Eigen::Vector<AUTODIFF_VAR_TYPE, 3> {
-    return lgmath::so3::diff::rot2vec(lgmath::so3::diff::vec2rot(xi));
+    return lgmath::so3::rot2vec(lgmath::so3::vec2rot(xi));
   };
 
   for (unsigned i = 0; i < numTests; i++) {
-#ifdef AUTODIFF_USE_FORWARD
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> F;
-    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
-                                            autodiff::at(xis.at(i)), F);
-#else
+#ifdef AUTODIFF_USE_BACKWARD
     Eigen::Vector<AUTODIFF_VAR_TYPE, 3> u = func(xis.at(i));
     Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> func_jacobian;
     for (int n = 0; n < 3; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), xis.at(i));
     }
+#else
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> F;
+    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
+                                            autodiff::at(xis.at(i)), F);
+
 #endif
-    auto expected = Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity(3, 3);
+    auto identityMat = Eigen::Matrix<double, 3, 3>::Identity(3, 3);
+    auto zeroMat = Eigen::Matrix<double, 3, 3>::Zero(3, 3);
 
     std::cout << "xis.at(i): " << xis.at(i) << std::endl;
-
-    std::cout << "expected: " << expected << std::endl;
     std::cout << "returned grad: " << func_jacobian << std::endl;
-    EXPECT_TRUE(lgmath::common::diff::nearEqual(expected, func_jacobian, 1e-6));
+    if (i >= 6) {
+      std::cout << "expected: " << identityMat << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(identityMat, func_jacobian, 1e-6));
+    } else {
+      std::cout << "expected: " << zeroMat << std::endl;
+      EXPECT_TRUE(lgmath::common::nearEqual(zeroMat, func_jacobian, 1e-6));
+    }
   }
 }
 

@@ -11,8 +11,19 @@
 #include <Eigen/Core>
 
 #if USE_AUTODIFF
+#ifdef AUTODIFF_USE_BACKWARD
+#include <autodiff/reverse/var.hpp>
+#include <autodiff/reverse/var/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::var
+#endif
+#else
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
+#ifndef AUTODIFF_VAR_TYPE
+#define AUTODIFF_VAR_TYPE autodiff::real1st
+#endif
+#endif
 #endif
 
 namespace lgmath {
@@ -61,20 +72,36 @@ bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
                      Eigen::Matrix<double, 6, 1> vec2, double tol = 1e-6);
 
 #if USE_AUTODIFF
-namespace diff {
+bool nearEqual(AUTODIFF_VAR_TYPE a, AUTODIFF_VAR_TYPE b, double tol);
 
-bool nearEqual(autodiff::real a, autodiff::real b, double tol);
+bool nearEqualAngle(AUTODIFF_VAR_TYPE radA, AUTODIFF_VAR_TYPE radB, double tol);
 
-bool nearEqual(autodiff::MatrixXreal A, autodiff::MatrixXreal B, double tol);
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, bool>
+nearEqual(const Eigen::MatrixBase<Derived>& A,
+          const Eigen::MatrixBase<Derived>& B, double tol) {
+  return common::nearEqual(A.template cast<double>(), B.template cast<double>(),
+                           tol);
+}
 
-bool nearEqualAngle(autodiff::real radA, autodiff::real radB, double tol);
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, bool>
+nearEqualAxisAngle(const Eigen::MatrixBase<Derived>& aaxis1,
+                   const Eigen::MatrixBase<Derived>& aaxis2, double tol) {
+  return common::nearEqualAxisAngle(aaxis1.template cast<double>(),
+                                    aaxis2.template cast<double>(), tol);
+}
 
-bool nearEqualAxisAngle(autodiff::Vector3real aaxis1,
-                        autodiff::Vector3real aaxis2, double tol);
-
-bool nearEqualLieAlg(autodiff::VectorXreal vec1, autodiff::VectorXreal vec2,
-                     double tol);
-}  // namespace diff
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, bool>
+nearEqualLieAlg(const Eigen::MatrixBase<Derived>& vec1,
+                const Eigen::MatrixBase<Derived>& vec2, double tol) {
+  return common::nearEqualLieAlg(vec1.template cast<double>(),
+                                 vec2.template cast<double>(), tol);
+}
 #endif  // USE_AUTODIFF
 
 }  // namespace common
