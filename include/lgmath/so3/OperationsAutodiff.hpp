@@ -31,13 +31,13 @@
 namespace lgmath {
 namespace so3 {
 
-AUTODIFF_VAR_TYPE clamp(const AUTODIFF_VAR_TYPE& val,
-                        const AUTODIFF_VAR_TYPE& min,
-                        const AUTODIFF_VAR_TYPE& max) {
+inline AUTODIFF_VAR_TYPE clamp(const AUTODIFF_VAR_TYPE& val,
+                               const AUTODIFF_VAR_TYPE& min,
+                               const AUTODIFF_VAR_TYPE& max) {
   return (val < min) ? min : (max < val) ? max : val;
 }
 
-AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
+inline AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
   if (1.0 - fabs(x) > 1e-6)
     return acos(x);
   else
@@ -292,7 +292,8 @@ vec2jac(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
                  "than pi. Gradients through this function call are zero."
               << std::endl;
     // If angle is near pi, then the jacobian is not differentiable
-    return Eigen::Matrix<typename Derived::Scalar, 3, 3>(J_ab.template cast<double>());
+    return Eigen::Matrix<typename Derived::Scalar, 3, 3>(
+        J_ab.template cast<double>());
   }
   return J_ab;
 }

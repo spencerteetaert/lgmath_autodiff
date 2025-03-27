@@ -127,8 +127,12 @@ AUTODIFF_DEVICE_FUNC bool isnan(const Real<N, T>& x) {
 }
 
 template <size_t N, typename T>
-AUTODIFF_DEVICE_FUNC double fabs(const Real<N, T>& x) {
-  return std::fabs(x.val());
+AUTODIFF_DEVICE_FUNC Real<N, T> fabs(const Real<N, T>& x) {
+  if (x.val() >= 0) {
+    return x;
+  } else {
+    return -x;
+  }
 }
 
 }  // namespace detail
