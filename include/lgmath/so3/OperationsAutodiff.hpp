@@ -11,6 +11,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <lgmath/CommonMath.hpp>
 
 #ifdef AUTODIFF_USE_BACKWARD
 #include <autodiff/reverse/var.hpp>
@@ -55,11 +56,13 @@ AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
  *
  * See eq. 5 in Barfoot-TRO-2014 for more information.
  */
-template <typename T>
-std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
-                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
-hat(const Eigen::Vector<T, 3>& vector) {
-  Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> mat;
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+hat(const Eigen::MatrixBase<Derived>& vector) {
+  assert(vector.rows() == 3 && vector.cols() == 1);
+  Eigen::Matrix<typename Derived::Scalar, 3, 3> mat;
   mat << 0.0, -vector[2], vector[1], vector[2], 0.0, -vector[0], -vector[1],
       vector[0], 0.0;
   return mat;
@@ -96,37 +99,43 @@ hat(const Eigen::Vector<T, 3>& vector) {
  * Noting that omega is negative (left-hand-rule).
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-template <typename T>
-std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
-                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
-vec2rot(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
+  assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Get angle
-  const T phi_ba = aaxis_ba.norm();
+  const typename Derived::Scalar phi_ba = aaxis_ba.norm();
 
   // If angle is very small, return Identity
   if (phi_ba < 1e-12) {
     std::cout << "vec2rot small angle" << std::endl;
-    return Eigen::Matrix<T, 3, 3>::Identity() + hat(aaxis_ba);
+    return Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
+           hat(aaxis_ba);
   }
 
   if (numTerms == 0) {
     std::cout << "vec2rot analytical" << std::endl;
     // Analytical solution
-    Eigen::Vector<T, 3> axis = aaxis_ba / phi_ba;
-    const T sinphi_ba = sin(phi_ba);
-    const T cosphi_ba = cos(phi_ba);
-    return cosphi_ba * Eigen::Matrix<T, 3, 3>::Identity() +
+    Eigen::Vector<typename Derived::Scalar, 3> axis = aaxis_ba / phi_ba;
+    const typename Derived::Scalar sinphi_ba = sin(phi_ba);
+    const typename Derived::Scalar cosphi_ba = cos(phi_ba);
+    return cosphi_ba *
+               Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
            (1.0 - cosphi_ba) * axis * axis.transpose() +
            sinphi_ba * so3::hat(axis);
 
   } else {
     std::cout << "vec2rot numerical" << std::endl;
     // Numerical solution (good for testing the analytical solution)
-    Eigen::Matrix<T, 3, 3> C_ab = Eigen::Matrix<T, 3, 3>::Identity();
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> C_ab =
+        Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
 
     // Incremental variables
-    Eigen::Matrix<T, 3, 3> x_small = so3::hat(aaxis_ba);
-    Eigen::Matrix<T, 3, 3> x_small_n = Eigen::Matrix<T, 3, 3>::Identity();
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> x_small = so3::hat(aaxis_ba);
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> x_small_n =
+        Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
 
     // Loop over sum up to the specified numTerms
     for (unsigned int n = 1; n <= numTerms; n++) {
@@ -158,14 +167,17 @@ vec2rot(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
  *
  * See Barfoot-TRO-2014 Appendix B2 for more information.
  */
-template <typename T>
-std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
-                 Eigen::Vector<AUTODIFF_VAR_TYPE, 3>>
-rot2vec(const Eigen::Matrix<T, 3, 3>& C_ab, const double eps = 1e-6) {
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Vector<AUTODIFF_VAR_TYPE, 3>>
+rot2vec(const Eigen::MatrixBase<Derived>& C_ab, const double eps = 1e-6) {
+  assert(C_ab.rows() == 3 && C_ab.cols() == 3);
   // Get angle
   // Find the eigenvalues and eigenvectors
-  const T phi_ba = smooth_acos(clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
-  const T sinphi_ba = sin(phi_ba);
+  const typename Derived::Scalar phi_ba =
+      smooth_acos(clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
+  const typename Derived::Scalar sinphi_ba = sin(phi_ba);
 
   std::cout << "Phi_ba: " << phi_ba << std::endl;
   std::cout << "sinphi_ba: " << sinphi_ba << std::endl;
@@ -173,7 +185,7 @@ rot2vec(const Eigen::Matrix<T, 3, 3>& C_ab, const double eps = 1e-6) {
   if (fabs(sinphi_ba) > eps) {
     std::cout << "General case" << std::endl;
     // General case, angle is NOT near 0, pi, or 2*pi
-    Eigen::Vector<T, 3> axis;
+    Eigen::Vector<typename Derived::Scalar, 3> axis;
     axis << C_ab(2, 1) - C_ab(1, 2), C_ab(0, 2) - C_ab(2, 0),
         C_ab(1, 0) - C_ab(0, 1);
     return (0.5 * phi_ba / sinphi_ba) * axis;
@@ -199,7 +211,8 @@ rot2vec(const Eigen::Matrix<T, 3, 3>& C_ab, const double eps = 1e-6) {
           (fabs(eivalues_real(i) - 1.0) < 1e-6)) {
         // Get corresponding angle-axis
         Eigen::Vector3d aaxis_ba = double(phi_ba) * eivec_real.col(i);
-        return static_cast<Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 1>>(aaxis_ba);
+        return static_cast<Eigen::Matrix<typename Derived::Scalar, 3, 1>>(
+            aaxis_ba);
       }
     }
 
@@ -210,7 +223,7 @@ rot2vec(const Eigen::Matrix<T, 3, 3>& C_ab, const double eps = 1e-6) {
   } else {
     std::cout << "zero case" << std::endl;
     // Angle is near zero or 2*pi
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> aaxis_ba;
+    Eigen::Vector<typename Derived::Scalar, 3> aaxis_ba;
     aaxis_ba << (-1.0 * C_ab(1, 2) + C_ab(2, 1)) / 2.0,
         (C_ab(0, 2) - C_ab(2, 0)) / 2.0, (-1.0 * C_ab(0, 1) + C_ab(1, 0)) / 2.0;
     return aaxis_ba;
@@ -232,37 +245,39 @@ rot2vec(const Eigen::Matrix<T, 3, 3>& C_ab, const double eps = 1e-6) {
  *
  * For more information see eq. 98 in Barfoot-TRO-2014.
  */
-template <typename T>
-std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
-                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
-vec2jac(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2jac(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
+  assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Get angle
-  const AUTODIFF_VAR_TYPE phi_ba = aaxis_ba.norm();
+  const typename Derived::Scalar phi_ba = aaxis_ba.norm();
   std::cout << "phi_ba: " << phi_ba << std::endl;
   if (phi_ba < 1e-12) {
     // If angle is very small, return Identity
-    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+    return Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
            0.5 * hat(aaxis_ba);
   }
 
   // Numerical solution (good for testing the analytical solution)
-  Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> J_ab;
+  Eigen::Matrix<typename Derived::Scalar, 3, 3> J_ab;
 
   if (numTerms == 0) {
     // Analytical solution
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> axis = aaxis_ba / phi_ba;
-    const AUTODIFF_VAR_TYPE sinTerm = sin(phi_ba) / phi_ba;
-    const AUTODIFF_VAR_TYPE cosTerm = (1.0 - cos(phi_ba)) / phi_ba;
-    J_ab = sinTerm * Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+    Eigen::Vector<typename Derived::Scalar, 3> axis = aaxis_ba / phi_ba;
+    const typename Derived::Scalar sinTerm = sin(phi_ba) / phi_ba;
+    const typename Derived::Scalar cosTerm = (1.0 - cos(phi_ba)) / phi_ba;
+    J_ab = sinTerm * Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
            (1.0 - sinTerm) * axis * axis.transpose() + cosTerm * so3::hat(axis);
   } else {
     // Numerical solution (good for testing the analytical solution)
-    J_ab = Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+    J_ab = Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
 
     // Incremental variables
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small = so3::hat(aaxis_ba);
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small_n =
-        Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> x_small = so3::hat(aaxis_ba);
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> x_small_n =
+        Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
 
     // Loop over sum up to the specified numTerms
     for (unsigned int n = 1; n <= numTerms; n++) {
@@ -277,7 +292,7 @@ vec2jac(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
                  "than pi. Gradients through this function call are zero."
               << std::endl;
     // If angle is near pi, then the jacobian is not differentiable
-    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>(J_ab.cast<double>());
+    return Eigen::Matrix<typename Derived::Scalar, 3, 3>(J_ab.template cast<double>());
   }
   return J_ab;
 }
@@ -295,18 +310,22 @@ vec2jac(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
  *
  * For more information see eq. 97 in Barfoot-TRO-2014.
  */
-template <typename T>
-std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void> vec2rot(
-    const Eigen::Vector<T, 3>& aaxis_ba, Eigen::Matrix<T, 3, 3>& out_C_ab,
-    Eigen::Matrix<T, 3, 3>& out_J_ab) {
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, void>
+vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba,
+        Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_C_ab,
+        Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_J_ab) {
+  assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Set Jacobian term
   out_J_ab = so3::vec2jac(aaxis_ba);
 
   // Set rotation matrix
-  Eigen::Matrix<T, 3, 3> C_ab =
-      Eigen::Matrix<T, 3, 3>::Identity() + so3::hat(aaxis_ba) * out_J_ab;
+  Eigen::Matrix<typename Derived::Scalar, 3, 3> C_ab =
+      Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
+      so3::hat(aaxis_ba) * out_J_ab;
 
-  const T phi_ba = aaxis_ba.norm();
+  const typename Derived::Scalar phi_ba = aaxis_ba.norm();
 
   if (fabs(M_PI - phi_ba) < 1e-6) {
     std::cout << "[WARNING]: vec2rot is not differentiable at pi. "
@@ -314,7 +333,8 @@ std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void> vec2rot(
                  "than pi. Gradients through this function call are zero."
               << std::endl;
     // If angle is near pi, then the jacobian is not differentiable
-    out_C_ab = Eigen::Matrix<T, 3, 3>(C_ab.template cast<double>());
+    out_C_ab = Eigen::Matrix<typename Derived::Scalar, 3, 3>(
+        C_ab.template cast<double>());
   } else {
     out_C_ab = C_ab;
   }
@@ -338,28 +358,31 @@ std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value, void> vec2rot(
  *
  * For more information see eq. 99 in Barfoot-TRO-2014.
  */
-template <typename T>
-std::enable_if_t<std::is_same<T, AUTODIFF_VAR_TYPE>::value,
-                 Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
-vec2jacinv(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
+template <typename Derived>
+std::enable_if_t<
+    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
+    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+vec2jacinv(const Eigen::MatrixBase<Derived>& aaxis_ba,
+           unsigned int numTerms = 0) {
+  assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Get angle
-  const AUTODIFF_VAR_TYPE phi_ba = aaxis_ba.norm();
+  const typename Derived::Scalar phi_ba = aaxis_ba.norm();
   std::cout << "phi_ba: " << phi_ba << std::endl;
   if (phi_ba < 1e-12) {
     // If angle is very small, return Identity
-    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() -
+    return Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() -
            0.5 * hat(aaxis_ba);
   }
 
-  Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> J_ab_inverse;
+  Eigen::Matrix<typename Derived::Scalar, 3, 3> J_ab_inverse;
 
   if (numTerms == 0) {
     // Analytical solution
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 3> axis = aaxis_ba / phi_ba;
-    const AUTODIFF_VAR_TYPE halfphi = 0.5 * phi_ba;
-    const AUTODIFF_VAR_TYPE cotanTerm = halfphi / tan(halfphi);
+    Eigen::Vector<typename Derived::Scalar, 3> axis = aaxis_ba / phi_ba;
+    const typename Derived::Scalar halfphi = 0.5 * phi_ba;
+    const typename Derived::Scalar cotanTerm = halfphi / tan(halfphi);
     J_ab_inverse =
-        cotanTerm * Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity() +
+        cotanTerm * Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
         (1.0 - cotanTerm) * axis * axis.transpose() - halfphi * so3::hat(axis);
   } else {
     // Logic error
@@ -369,12 +392,12 @@ vec2jacinv(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
     }
 
     // Numerical solution (good for testing the analytical solution)
-    J_ab_inverse = Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+    J_ab_inverse = Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
 
     // Incremental variables
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small = so3::hat(aaxis_ba);
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3> x_small_n =
-        Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>::Identity();
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> x_small = so3::hat(aaxis_ba);
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> x_small_n =
+        Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
 
     // Boost has a bernoulli package... but we shouldn't need more than 20
     Eigen::Matrix<double, 21, 1> bernoulli;
@@ -395,7 +418,8 @@ vec2jacinv(const Eigen::Vector<T, 3>& aaxis_ba, unsigned int numTerms = 0) {
                  "than pi. Gradients through this function call are zero."
               << std::endl;
     // If angle is near pi, then the inverse jacobian is not differentiable
-    return Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>(J_ab_inverse.cast<double>());
+    return Eigen::Matrix<typename Derived::Scalar, 3, 3>(
+        J_ab_inverse.template cast<double>());
   }
   return J_ab_inverse;
 }
