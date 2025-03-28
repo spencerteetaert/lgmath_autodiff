@@ -19,6 +19,7 @@ It is used for robotics research at the Autonomous Space Robotics Lab; most nota
 - CMake (>=3.16)
 - Eigen (>=3.3.7)
 - (Optional) ROS2 Foxy or later (colcon+ament_cmake)
+- (Optional) Autodiff
 
 ### Install c++ compiler and cmake
 
@@ -70,6 +71,31 @@ git clone https://github.com/utiasASRL/lgmath.git .
 source <your ROS2 worspace>
 colcon build --symlink-install --cmake-args "-DUSE_AMENT=ON"
 colcon build --symlink-install --cmake-args "-DUSE_AMENT=ON" --cmake-target doc  # (optional) generate documentation in ./build/doc
+```
+
+### lgmath using `Autodiff`
+[Autodiff](https://autodiff.github.io/) is a C++ library for automatic differentiation. For more details, refer to the [Autodiff documentation](https://autodiff.github.io/).
+
+lgmath optionally supports autodiff forward mode using the real1st type. This support is optionally included in the header files for lgmath. To use in your project, add the DUSE_AUTODIFF flag to your compiler flags. To use, replace the scalar on all input Eigen types to autodiff::real1st. 
+```cpp 
+#include <lgmath.hpp>
+#include <autodiff/forward/real.hpp>
+#include <autodiff/forward/real/eigen.hpp>
+
+int main(int argc, char *argv[]) {
+    // Regular usage
+    Eigen::Matrix<double, 6, 1> xi_double; 
+    xi_double.setRandom(); 
+    Eigen::Matrix<double, 6, 6> xi_double_hat = lgmath::se3::curlyhat(xi_double); 
+
+    // Autodiff usage -- Requires USE_AUTODIFF compiler flag 
+    Eigen::Matrix<autodiff::real1st, 6, 1> xi_real; 
+    xi_real.setRandom(); 
+    Eigen::Matrix<autodiff::real1st, 6, 6> xi_real_hat = lgmath::se3::curlyhat(xi_real); 
+
+    return 1; 
+}
+
 ```
 
 ## [License](./LICENSE)

@@ -2,7 +2,7 @@
  * \file lgmath.hpp
  * \brief Convenience Header
  *
- * \author Sean Anderson
+ * \author Sean Anderson (autodiff support by Spencer Teetaert) 
  */
 #pragma once
 

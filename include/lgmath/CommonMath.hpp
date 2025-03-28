@@ -4,7 +4,7 @@
  * \details defines some constants, angle-based functions, and comparison
  * functions.
  *
- * \author Sean Anderson, ASRL
+ * \author Sean Anderson, ASRL (autodiff support by Spencer Teetaert) 
  */
 #pragma once
 

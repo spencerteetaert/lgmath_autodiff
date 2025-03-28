@@ -3,7 +3,7 @@
  * \brief A header-only helper file with a few common tools.
  * \details Implements a basic timer tool.
  *
- * \author Sean Anderson, ASRL
+ * \author Sean Anderson, ASRL (autodiff support by Spencer Teetaert) 
  */
 #pragma once
 

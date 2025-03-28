@@ -1,9 +1,6 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
 /// \file SO3AutodiffTests.cpp
-/// \brief Unit tests for the autodiff implementation of the SO3 Lie Group math.
-/// \details Unit tests for the various Lie Group functions will test both
-/// special cases,
-///          and randomly generated cases.
+/// \brief Unit tests for the autodiff implementation of the SO3 Lie Group math in backward mode. 
 ///
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////

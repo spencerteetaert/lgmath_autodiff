@@ -1,11 +1,11 @@
 
 /**
  * \file Operations.hpp
- * \brief Header file for the SE3 Lie Group math functions.
+ * \brief Header file for the SE3 autodiff Lie Group math functions.
  * \details These namespace functions provide implementations of the special
  * Euclidean (SE) Lie group functions that we commonly use in robotics.
  *
- * \author Sean Anderson
+ * \author autodiff support by Spencer Teetaert
  */
 #pragma once
 
