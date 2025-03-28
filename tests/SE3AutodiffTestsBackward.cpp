@@ -8,6 +8,7 @@
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+#ifdef AUTODIFF_USE_BACKWARD
 #include <gtest/gtest.h>
 
 #include <math.h>
@@ -18,16 +19,12 @@
 #include <Eigen/Dense>
 #include <lgmath/CommonMath.hpp>
 #include <lgmath/se3/Operations.hpp>
-#include <lgmath/se3/OperationsAutodiff.hpp>
+#include <lgmath/se3/OperationsAutodiffBackward.hpp>
 
-#ifdef AUTODIFF_USE_BACKWARD
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
-#else
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-#endif
 
+using autodiff::var; 
 /////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// UNIT TESTS OF SE(3) MATH
@@ -56,10 +53,10 @@ TEST(LGMathAutodiff, Test4x4HatFunction) {
 
   // Test the function
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> vec =
-        trueVecs.at(i).cast<AUTODIFF_VAR_TYPE>();
+    Eigen::Vector<var, 6> vec =
+        trueVecs.at(i).cast<var>();
 
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> testMatAutodiff(4, 4);
+    Eigen::Matrix<var, 4, 4> testMatAutodiff(4, 4);
     testMatAutodiff = lgmath::se3::hat(vec);
 
     Eigen::Matrix<double, 4, 4> testMat = testMatAutodiff.cast<double>();
@@ -92,10 +89,10 @@ TEST(LGMathAutodiff, TestCurlyHatFunction) {
 
   // Test the function
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> vec =
-        trueVecs.at(i).cast<AUTODIFF_VAR_TYPE>();
+    Eigen::Vector<var, 6> vec =
+        trueVecs.at(i).cast<var>();
 
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> testMatAutodiff(6, 6);
+    Eigen::Matrix<var, 6, 6> testMatAutodiff(6, 6);
     testMatAutodiff = lgmath::se3::curlyhat(vec);
 
     Eigen::Matrix<double, 6, 6> testMat = testMatAutodiff.cast<double>();
@@ -128,9 +125,9 @@ TEST(LGMathAutodiff, TestPointTo4x6MatrixFunction) {
 
   // Test the 3x1 function with scaling param
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 4> vec =
-        trueVecs.at(i).cast<AUTODIFF_VAR_TYPE>();
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6> testMat =
+    Eigen::Vector<var, 4> vec =
+        trueVecs.at(i).cast<var>();
+    Eigen::Matrix<var, 4, 6> testMat =
         lgmath::se3::point2fs(vec.head<3>(), vec[3]);
     std::cout << "true: " << trueMats.at(i) << std::endl;
     std::cout << "func: " << testMat << std::endl;
@@ -162,9 +159,9 @@ TEST(LGMathAutodiff, TestPointTo6x4MatrixFunction) {
 
   // Test the 3x1 function with scaling param
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 4> vec =
-        trueVecs.at(i).cast<AUTODIFF_VAR_TYPE>();
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 4> testMat =
+    Eigen::Vector<var, 4> vec =
+        trueVecs.at(i).cast<var>();
+    Eigen::Matrix<var, 6, 4> testMat =
         lgmath::se3::point2sf(vec.head<3>(), vec[3]);
     std::cout << "true: " << trueMats.at(i) << std::endl;
     std::cout << "func: " << testMat << std::endl;
@@ -178,9 +175,9 @@ TEST(LGMathAutodiff, TestPointTo6x4MatrixFunction) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
   // Add vectors to be tested
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> trueVecs;
+  std::vector<Eigen::Vector<var, 6>> trueVecs;
   std::vector<Eigen::Matrix<double, 4, 4>> trueMats;
-  Eigen::Vector<AUTODIFF_VAR_TYPE, 6> temp(6);
+  Eigen::Vector<var, 6> temp(6);
   temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
   temp << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
@@ -209,7 +206,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
   trueVecs.push_back(temp);
   const unsigned numRand = 20;
   for (unsigned i = 0; i < numRand; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
+    Eigen::Vector<var, 6> rand(6);
     rand.setRandom();
     trueVecs.push_back(rand);
   }
@@ -228,7 +225,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 4, 4> numericTran =
           lgmath::se3::vec2tran(trueVecs.at(i).cast<double>());
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> numericTranDiff =
+      Eigen::Matrix<var, 4, 4> numericTranDiff =
           lgmath::se3::vec2tran(trueVecs.at(i));
       std::cout << "vec: \n" << trueVecs.at(i) << std::endl;
       std::cout << "non-diff: \n" << numericTran << std::endl;
@@ -243,7 +240,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 4, 4> numericTran =
           lgmath::se3::vec2tran(trueVecs.at(i).cast<double>(), 20);
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4> numericTranDiff =
+      Eigen::Matrix<var, 4, 4> numericTranDiff =
           lgmath::se3::vec2tran(trueVecs.at(i), 20);
       std::cout << "non-diff numeric: " << numericTran << std::endl;
       std::cout << "diff numeric: " << numericTranDiff << std::endl;
@@ -257,9 +254,9 @@ TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 6, 1> numericVec =
           lgmath::se3::tran2vec(trueMats.at(i));
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1> numericVecDiff =
+      Eigen::Matrix<var, 6, 1> numericVecDiff =
           lgmath::se3::tran2vec(
-              Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>(trueMats.at(i)));
+              Eigen::Matrix<var, 4, 4>(trueMats.at(i)));
       std::cout << "non-diff numeric: " << numericVec << std::endl;
       std::cout << "diff numeric: " << numericVecDiff << std::endl;
       EXPECT_TRUE(lgmath::common::nearEqual(
@@ -273,8 +270,8 @@ TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
   // Add vectors to be tested
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> trueVecs;
-  Eigen::Vector<AUTODIFF_VAR_TYPE, 6> temp(6);
+  std::vector<Eigen::Vector<var, 6>> trueVecs;
+  Eigen::Vector<var, 6> temp(6);
   temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
   temp << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
@@ -303,7 +300,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
   trueVecs.push_back(temp);
   const unsigned numRand = 20;
   for (unsigned i = 0; i < numRand; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
+    Eigen::Vector<var, 6> rand(6);
     rand.setRandom();
     trueVecs.push_back(rand);
   }
@@ -316,7 +313,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 6, 6> analyticJac =
           lgmath::se3::vec2jac(trueVecs.at(i).cast<double>());
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> analyticJacDiff =
+      Eigen::Matrix<var, 6, 6> analyticJacDiff =
           lgmath::se3::vec2jac(trueVecs.at(i));
       std::cout << "non-diff: " << analyticJac << std::endl;
       std::cout << "diff: " << analyticJacDiff << std::endl;
@@ -330,7 +327,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 6, 6> numericJac =
           lgmath::se3::vec2jac(trueVecs.at(i).cast<double>(), 20);
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> numericJacDiff =
+      Eigen::Matrix<var, 6, 6> numericJacDiff =
           lgmath::se3::vec2jac(trueVecs.at(i), 20);
       std::cout << "non-diff: " << numericJac << std::endl;
       std::cout << "diff: " << numericJacDiff << std::endl;
@@ -344,7 +341,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 6, 6> analyticJacInv =
           lgmath::se3::vec2jacinv(trueVecs.at(i).cast<double>());
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> analyticJacInvDiff =
+      Eigen::Matrix<var, 6, 6> analyticJacInvDiff =
           lgmath::se3::vec2jacinv(trueVecs.at(i));
       std::cout << "non-diff: " << analyticJacInv << std::endl;
       std::cout << "diff: " << analyticJacInvDiff << std::endl;
@@ -358,7 +355,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
     for (unsigned i = 0; i < numTests; i++) {
       Eigen::Matrix<double, 6, 6> numericJacInv =
           lgmath::se3::vec2jacinv(trueVecs.at(i).cast<double>(), 20);
-      Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> numericJacInvDiff =
+      Eigen::Matrix<var, 6, 6> numericJacInvDiff =
           lgmath::se3::vec2jacinv(trueVecs.at(i), 20);
       std::cout << "non-diff: " << numericJacInv << std::endl;
       std::cout << "diff: " << numericJacInvDiff << std::endl;
@@ -374,8 +371,8 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
   // Add vectors to be tested
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> trueVecs;
-  Eigen::Vector<AUTODIFF_VAR_TYPE, 6> temp(6);
+  std::vector<Eigen::Vector<var, 6>> trueVecs;
+  Eigen::Vector<var, 6> temp(6);
   temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
   temp << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
@@ -404,7 +401,7 @@ TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
   trueVecs.push_back(temp);
   const unsigned numRand = 20;
   for (unsigned i = 0; i < numRand; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
+    Eigen::Vector<var, 6> rand(6);
     rand.setRandom();
     trueVecs.push_back(rand);
   }
@@ -414,10 +411,10 @@ TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
 
   // Test Identity
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> lhs =
+    Eigen::Matrix<var, 6, 6> lhs =
         lgmath::se3::tranAd(lgmath::se3::vec2tran(trueVecs.at(i)));
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> rhs =
-        Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>::Identity(6, 6) +
+    Eigen::Matrix<var, 6, 6> rhs =
+        Eigen::Matrix<var, 6, 6>::Identity(6, 6) +
         lgmath::se3::curlyhat(trueVecs.at(i)) *
             lgmath::se3::vec2jac(trueVecs.at(i));
     std::cout << "lhs: " << lhs << std::endl;
@@ -432,23 +429,23 @@ TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
 TEST(LGMathAutodiff, TestSE3Derivative1) {
   const unsigned numTests = 20;
 
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> xis;
+  std::vector<Eigen::Vector<var, 6>> xis;
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
+    Eigen::Vector<var, 6> rand(6);
     rand.setRandom();
     xis.push_back(rand);
   }
 
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> varpis;
+  std::vector<Eigen::Vector<var, 6>> varpis;
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
+    Eigen::Vector<var, 6> rand(6);
     rand.setRandom();
     varpis.push_back(rand);
   }
 
-  auto func = [](const Eigen::Vector<AUTODIFF_VAR_TYPE, 6> &xi,
-                 const Eigen::Vector<AUTODIFF_VAR_TYPE, 6> &varpi)
-      -> Eigen::Vector<AUTODIFF_VAR_TYPE, 6> {
+  auto func = [](const Eigen::Vector<var, 6> &xi,
+                 const Eigen::Vector<var, 6> &varpi)
+      -> Eigen::Vector<var, 6> {
     return lgmath::se3::vec2jac(xi) * varpi;
   };
 
@@ -456,13 +453,13 @@ TEST(LGMathAutodiff, TestSE3Derivative1) {
 
   for (unsigned i = 0; i < numTests; i++) {
 #ifdef AUTODIFF_USE_BACKWARD
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> u = func(xis.at(i), varpis.at(i));
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> func_jacobian;
+    Eigen::Vector<var, 6> u = func(xis.at(i), varpis.at(i));
+    Eigen::Matrix<var, 6, 6> func_jacobian;
     for (int n = 0; n < 6; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), varpis.at(i));
     }
 #else
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> F;
+    Eigen::Vector<var, 6> F;
 
     auto func_jacobian =
         autodiff::jacobian(func, autodiff::wrt(varpis.at(i)),
@@ -481,10 +478,10 @@ TEST(LGMathAutodiff, TestSE3Derivative1) {
 /// \brief Test of derivative of vec2tran
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TESTVec2TranDerivative) {
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1>> xis;
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 16, 6>> expectedMats;
-  Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1> temp;
-  Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 16> tempMat;
+  std::vector<Eigen::Matrix<var, 6, 1>> xis;
+  std::vector<Eigen::Matrix<var, 16, 6>> expectedMats;
+  Eigen::Matrix<var, 6, 1> temp;
+  Eigen::Matrix<var, 6, 16> tempMat;
   temp << 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0, 0.0;
   xis.push_back(temp);
   tempMat.setZero();
@@ -522,17 +519,17 @@ TEST(LGMathAutodiff, TESTVec2TranDerivative) {
 
   const unsigned numTests = xis.size();
 
-  auto func = [](const Eigen::Vector<AUTODIFF_VAR_TYPE, 6> &xi)
-      -> Eigen::Vector<AUTODIFF_VAR_TYPE, 16> {
+  auto func = [](const Eigen::Vector<var, 6> &xi)
+      -> Eigen::Vector<var, 16> {
     auto result = lgmath::se3::vec2tran(xi);
-    Eigen::Map<const Eigen::Matrix<AUTODIFF_VAR_TYPE, 16, 1>> resultMap(
+    Eigen::Map<const Eigen::Matrix<var, 16, 1>> resultMap(
         result.data(), result.size());
 
     return resultMap;
   };
 
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 16> F;
+    Eigen::Vector<var, 16> F;
     auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
                                             autodiff::at(xis.at(i)), F);
 
@@ -551,8 +548,8 @@ TEST(LGMathAutodiff, TESTVec2TranDerivative) {
 /// tran2vec(vec2tran(xi)), tests df/dxi
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestSE3Derivative2) {
-  std::vector<Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1>> xis;
-  Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 1> temp;
+  std::vector<Eigen::Matrix<var, 6, 1>> xis;
+  Eigen::Matrix<var, 6, 1> temp;
   temp << 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0, 0.0;
   xis.push_back(temp);
   temp << 0.0, 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0;
@@ -586,20 +583,20 @@ TEST(LGMathAutodiff, TestSE3Derivative2) {
 
   const unsigned numTests = xis.size();
 
-  auto func = [](const Eigen::Vector<AUTODIFF_VAR_TYPE, 6> &xi)
-      -> Eigen::Vector<AUTODIFF_VAR_TYPE, 6> {
+  auto func = [](const Eigen::Vector<var, 6> &xi)
+      -> Eigen::Vector<var, 6> {
     return lgmath::se3::tran2vec(lgmath::se3::vec2tran(xi));
   };
 
   for (unsigned i = 0; i < numTests; i++) {
 #ifdef AUTODIFF_USE_BACKWARD
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> u = func(xis.at(i));
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6> func_jacobian;
+    Eigen::Vector<var, 6> u = func(xis.at(i));
+    Eigen::Matrix<var, 6, 6> func_jacobian;
     for (int n = 0; n < 6; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), xis.at(i));
     }
 #else
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> F;
+    Eigen::Vector<var, 6> F;
     auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
                                             autodiff::at(xis.at(i)), F);
 #endif
@@ -631,29 +628,29 @@ TEST(LGMathAutodiff, TestSE3Derivative2) {
 TEST(LGMathAutodiff, TestSE3Derivative3) {
   const unsigned numTests = 20;
 
-  std::vector<Eigen::Vector<AUTODIFF_VAR_TYPE, 6>> xis;
+  std::vector<Eigen::Vector<var, 6>> xis;
   for (unsigned i = 0; i < numTests; i++) {
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> rand(6);
+    Eigen::Vector<var, 6> rand(6);
     rand.setRandom();
     xis.push_back(rand);
   }
 
-  Eigen::Vector<AUTODIFF_VAR_TYPE, 4> a;
+  Eigen::Vector<var, 4> a;
   a << 1.0, 1.0, 1.0, 1.0;
-  auto func = [a](const Eigen::Vector<AUTODIFF_VAR_TYPE, 6> &xi)
-      -> Eigen::Vector<AUTODIFF_VAR_TYPE, 4> {
+  auto func = [a](const Eigen::Vector<var, 6> &xi)
+      -> Eigen::Vector<var, 4> {
     return lgmath::se3::vec2tran(xi) * a;
   };
 
   for (unsigned i = 0; i < numTests; i++) {
 #ifdef AUTODIFF_USE_BACKWARD
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6> u = func(xis.at(i));
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6> func_jacobian;
+    Eigen::Vector<var, 6> u = func(xis.at(i));
+    Eigen::Matrix<var, 4, 6> func_jacobian;
     for (int n = 0; n < 4; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), xis.at(i));
     }
 #else
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 4> F;
+    Eigen::Vector<var, 4> F;
     auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
                                             autodiff::at(xis.at(i)), F);
 
@@ -686,3 +683,4 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+#endif

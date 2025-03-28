@@ -1,4 +1,4 @@
-#if USE_AUTODIFF
+
 /**
  * \file Operations.hpp
  * \brief Header file for the SO3 Lie Group math functions.
@@ -9,35 +9,29 @@
  */
 #pragma once
 
+#if USE_AUTODIFF
+#if AUTODIFF_USE_BACKWARD
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <lgmath/CommonMath.hpp>
 
-#ifdef AUTODIFF_USE_BACKWARD
 #include <autodiff/reverse/var.hpp>
 #include <autodiff/reverse/var/eigen.hpp>
-#ifndef AUTODIFF_VAR_TYPE
-#define AUTODIFF_VAR_TYPE autodiff::var
-#endif
-#else
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-#ifndef AUTODIFF_VAR_TYPE
-#define AUTODIFF_VAR_TYPE autodiff::real1st
-#endif
-#endif
+
+using autodiff::var; 
 
 /// Lie Group Math - Special Orthogonal Group
 namespace lgmath {
 namespace so3 {
 
-inline AUTODIFF_VAR_TYPE clamp(const AUTODIFF_VAR_TYPE& val,
-                               const AUTODIFF_VAR_TYPE& min,
-                               const AUTODIFF_VAR_TYPE& max) {
+inline var clamp(const var& val,
+                               const var& min,
+                               const var& max) {
   return (val < min) ? min : (max < val) ? max : val;
 }
 
-inline AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
+inline var smooth_acos(const var& x) {
   if (1.0 - fabs(x) > 1e-6)
     return acos(x);
   else
@@ -58,8 +52,8 @@ inline AUTODIFF_VAR_TYPE smooth_acos(const AUTODIFF_VAR_TYPE& x) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+    std::is_same<typename Derived::Scalar, var>::value,
+    Eigen::Matrix<var, 3, 3>>
 hat(const Eigen::MatrixBase<Derived>& vector) {
   assert(vector.rows() == 3 && vector.cols() == 1);
   Eigen::Matrix<typename Derived::Scalar, 3, 3> mat;
@@ -101,8 +95,8 @@ hat(const Eigen::MatrixBase<Derived>& vector) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+    std::is_same<typename Derived::Scalar, var>::value,
+    Eigen::Matrix<var, 3, 3>>
 vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
   assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Get angle
@@ -110,13 +104,11 @@ vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
 
   // If angle is very small, return Identity
   if (phi_ba < 1e-12) {
-    std::cout << "vec2rot small angle" << std::endl;
     return Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
            hat(aaxis_ba);
   }
 
   if (numTerms == 0) {
-    std::cout << "vec2rot analytical" << std::endl;
     // Analytical solution
     Eigen::Vector<typename Derived::Scalar, 3> axis = aaxis_ba / phi_ba;
     const typename Derived::Scalar sinphi_ba = sin(phi_ba);
@@ -127,7 +119,6 @@ vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
            sinphi_ba * so3::hat(axis);
 
   } else {
-    std::cout << "vec2rot numerical" << std::endl;
     // Numerical solution (good for testing the analytical solution)
     Eigen::Matrix<typename Derived::Scalar, 3, 3> C_ab =
         Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity();
@@ -169,8 +160,8 @@ vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 3>>
+    std::is_same<typename Derived::Scalar, var>::value,
+    Eigen::Vector<var, 3>>
 rot2vec(const Eigen::MatrixBase<Derived>& C_ab, const double eps = 1e-6) {
   assert(C_ab.rows() == 3 && C_ab.cols() == 3);
   // Get angle
@@ -179,11 +170,7 @@ rot2vec(const Eigen::MatrixBase<Derived>& C_ab, const double eps = 1e-6) {
       smooth_acos(clamp(0.5 * (C_ab.trace() - 1.0), -1.0, 1.0));
   const typename Derived::Scalar sinphi_ba = sin(phi_ba);
 
-  std::cout << "Phi_ba: " << phi_ba << std::endl;
-  std::cout << "sinphi_ba: " << sinphi_ba << std::endl;
-
   if (fabs(sinphi_ba) > eps) {
-    std::cout << "General case" << std::endl;
     // General case, angle is NOT near 0, pi, or 2*pi
     Eigen::Vector<typename Derived::Scalar, 3> axis;
     axis << C_ab(2, 1) - C_ab(1, 2), C_ab(0, 2) - C_ab(2, 0),
@@ -221,7 +208,6 @@ rot2vec(const Eigen::MatrixBase<Derived>& C_ab, const double eps = 1e-6) {
         "so3 logarithmic map failed to find an axis-angle, "
         "angle was near pi, or 2*pi, but no eigenvalues were near 1");
   } else {
-    std::cout << "zero case" << std::endl;
     // Angle is near zero or 2*pi
     Eigen::Vector<typename Derived::Scalar, 3> aaxis_ba;
     aaxis_ba << (-1.0 * C_ab(1, 2) + C_ab(2, 1)) / 2.0,
@@ -247,13 +233,12 @@ rot2vec(const Eigen::MatrixBase<Derived>& C_ab, const double eps = 1e-6) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+    std::is_same<typename Derived::Scalar, var>::value,
+    Eigen::Matrix<var, 3, 3>>
 vec2jac(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
   assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Get angle
   const typename Derived::Scalar phi_ba = aaxis_ba.norm();
-  std::cout << "phi_ba: " << phi_ba << std::endl;
   if (phi_ba < 1e-12) {
     // If angle is very small, return Identity
     return Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
@@ -313,7 +298,7 @@ vec2jac(const Eigen::MatrixBase<Derived>& aaxis_ba, unsigned int numTerms = 0) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, void>
+    std::is_same<typename Derived::Scalar, var>::value, void>
 vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba,
         Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_C_ab,
         Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_J_ab) {
@@ -361,14 +346,13 @@ vec2rot(const Eigen::MatrixBase<Derived>& aaxis_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+    std::is_same<typename Derived::Scalar, var>::value,
+    Eigen::Matrix<var, 3, 3>>
 vec2jacinv(const Eigen::MatrixBase<Derived>& aaxis_ba,
            unsigned int numTerms = 0) {
   assert(aaxis_ba.rows() == 3 && aaxis_ba.cols() == 1);
   // Get angle
   const typename Derived::Scalar phi_ba = aaxis_ba.norm();
-  std::cout << "phi_ba: " << phi_ba << std::endl;
   if (phi_ba < 1e-12) {
     // If angle is very small, return Identity
     return Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() -
@@ -426,4 +410,5 @@ vec2jacinv(const Eigen::MatrixBase<Derived>& aaxis_ba,
 }
 }  // namespace so3
 }  // namespace lgmath
+#endif
 #endif

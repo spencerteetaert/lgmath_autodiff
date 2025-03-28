@@ -1,4 +1,4 @@
-#if USE_AUTODIFF
+
 /**
  * \file Operations.hpp
  * \brief Header file for the SE3 Lie Group math functions.
@@ -9,23 +9,17 @@
  */
 #pragma once
 
+#if USE_AUTODIFF
+#if AUTODIFF_USE_BACKWARD
+#else 
+
 #include <lgmath/CommonMath.hpp>
-#include <lgmath/so3/OperationsAutodiff.hpp>
+#include <lgmath/so3/OperationsAutodiffForward.hpp>
 
 #include <Eigen/Core>
-#ifdef AUTODIFF_USE_BACKWARD
-#include <autodiff/reverse/var.hpp>
-#include <autodiff/reverse/var/eigen.hpp>
-#ifndef AUTODIFF_VAR_TYPE
-#define AUTODIFF_VAR_TYPE autodiff::var
-#endif
-#else
+
 #include <autodiff/forward/real.hpp>
 #include <autodiff/forward/real/eigen.hpp>
-#ifndef AUTODIFF_VAR_TYPE
-#define AUTODIFF_VAR_TYPE autodiff::real1st
-#endif
-#endif
 
 /// Lie Group Math - Special Euclidean Group
 namespace lgmath {
@@ -46,8 +40,8 @@ namespace se3 {
 
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 4, 4>>
 hat(const Eigen::MatrixBase<Derived>& rho,
     const Eigen::MatrixBase<Derived>& aaxis) {
   assert(rho.cols() == 1 && rho.rows() == 3);
@@ -74,8 +68,8 @@ hat(const Eigen::MatrixBase<Derived>& rho,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 4, 4>>
 hat(const Eigen::MatrixBase<Derived>& xi) {
   assert(xi.rows() == 6 && xi.cols() == 1);
   return se3::hat(xi.template head<3>(), xi.template tail<3>());
@@ -95,8 +89,8 @@ hat(const Eigen::MatrixBase<Derived>& xi) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 curlyhat(const Eigen::MatrixBase<Derived>& rho,
          const Eigen::MatrixBase<Derived>& aaxis) {
   assert(rho.cols() == 1 && rho.rows() == 3);
@@ -123,8 +117,8 @@ curlyhat(const Eigen::MatrixBase<Derived>& rho,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 curlyhat(const Eigen::MatrixBase<Derived>& xi) {
   assert(xi.cols() == 1 && xi.rows() == 6);
   return curlyhat(xi.template head<3>(), xi.template tail<3>());
@@ -138,8 +132,8 @@ curlyhat(const Eigen::MatrixBase<Derived>& xi) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 4, 6>>
 point2fs(const Eigen::MatrixBase<Derived>& p,
          typename Derived::Scalar scale = typename Derived::Scalar(1)) {
   assert(p.rows() == 3 && p.cols() == 1);
@@ -159,8 +153,8 @@ point2fs(const Eigen::MatrixBase<Derived>& p,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 4>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 4>>
 point2sf(const Eigen::MatrixBase<Derived>& p,
          typename Derived::Scalar scale = typename Derived::Scalar(1)) {
   assert(p.rows() == 3 && p.cols() == 1);
@@ -205,7 +199,7 @@ point2sf(const Eigen::MatrixBase<Derived>& p,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, void>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value, void>
 vec2tran_analytical(const Eigen::MatrixBase<Derived>& rho_ba,
                     const Eigen::MatrixBase<Derived>& aaxis_ba,
                     Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_C_ab,
@@ -256,7 +250,7 @@ vec2tran_analytical(const Eigen::MatrixBase<Derived>& rho_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, void>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value, void>
 vec2tran_numerical(const Eigen::MatrixBase<Derived>& rho_ba,
                    const Eigen::MatrixBase<Derived>& aaxis_ba,
                    Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_C_ab,
@@ -292,7 +286,7 @@ vec2tran_numerical(const Eigen::MatrixBase<Derived>& rho_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value, void>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value, void>
 vec2tran(const Eigen::MatrixBase<Derived>& xi_ba,
          Eigen::Matrix<typename Derived::Scalar, 3, 3>& out_C_ab,
          Eigen::Vector<typename Derived::Scalar, 3>& out_r_ba_ina,
@@ -315,8 +309,8 @@ vec2tran(const Eigen::MatrixBase<Derived>& xi_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 4, 4>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 4, 4>>
 vec2tran(const Eigen::MatrixBase<Derived>& xi_ba, unsigned int numTerms = 0) {
   assert(xi_ba.rows() == 6 && xi_ba.cols() == 1);
   // Get rotation and translation
@@ -352,8 +346,8 @@ vec2tran(const Eigen::MatrixBase<Derived>& xi_ba, unsigned int numTerms = 0) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Vector<autodiff::real1st, 6>>
 tran2vec(const Eigen::MatrixBase<Derived>& C_ab,
          const Eigen::Vector<typename Derived::Scalar, 3>& r_ba_ina) {
   assert(C_ab.rows() == 3 && C_ab.cols() == 3);
@@ -391,8 +385,8 @@ tran2vec(const Eigen::MatrixBase<Derived>& C_ab,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Vector<AUTODIFF_VAR_TYPE, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Vector<autodiff::real1st, 6>>
 tran2vec(const Eigen::MatrixBase<Derived>& T_ab) {
   assert(T_ab.rows() == 4 && T_ab.cols() == 4);
   return tran2vec(T_ab.template topLeftCorner<3, 3>(),
@@ -414,8 +408,8 @@ tran2vec(const Eigen::MatrixBase<Derived>& T_ab) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 tranAd(const Eigen::MatrixBase<Derived>& C_ab,
        const Eigen::Vector<typename Derived::Scalar, 3>& r_ba_ina) {
   assert(C_ab.rows() == 3 && C_ab.cols() == 3);
@@ -441,8 +435,8 @@ tranAd(const Eigen::MatrixBase<Derived>& C_ab,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 tranAd(const Eigen::MatrixBase<Derived>& T_ab) {
   assert(T_ab.rows() == 4 && T_ab.cols() == 4);
   return tranAd(T_ab.template topLeftCorner<3, 3>(),
@@ -456,8 +450,8 @@ tranAd(const Eigen::MatrixBase<Derived>& T_ab) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 3, 3>>
 vec2Q(const Eigen::MatrixBase<Derived>& rho_ba,
       const Eigen::MatrixBase<Derived>& aaxis_ba) {
   assert(rho_ba.rows() == 3 && rho_ba.cols() == 1);
@@ -495,8 +489,8 @@ vec2Q(const Eigen::MatrixBase<Derived>& rho_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 3, 3>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 3, 3>>
 vec2Q(const Eigen::MatrixBase<Derived>& xi_ba) {
   assert(xi_ba.rows() == 6 && xi_ba.cols() == 1);
   return vec2Q(xi_ba.template head<3>(), xi_ba.template tail<3>());
@@ -525,8 +519,8 @@ vec2Q(const Eigen::MatrixBase<Derived>& xi_ba) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 vec2jac(const Eigen::MatrixBase<Derived>& rho_ba,
         const Eigen::MatrixBase<Derived>& aaxis_ba) {  // Init
   assert(rho_ba.rows() == 3 && rho_ba.cols() == 1);
@@ -559,8 +553,8 @@ vec2jac(const Eigen::MatrixBase<Derived>& rho_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 vec2jac(const Eigen::MatrixBase<Derived>& xi_ba, unsigned int numTerms = 0) {
   assert(xi_ba.rows() == 6 && xi_ba.cols() == 1);
   if (numTerms == 0) {
@@ -605,8 +599,8 @@ vec2jac(const Eigen::MatrixBase<Derived>& xi_ba, unsigned int numTerms = 0) {
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 vec2jacinv(const Eigen::MatrixBase<Derived>& rho_ba,
            const Eigen::MatrixBase<Derived>& aaxis_ba) {
   assert(rho_ba.rows() == 3 && rho_ba.cols() == 1);
@@ -644,8 +638,8 @@ vec2jacinv(const Eigen::MatrixBase<Derived>& rho_ba,
  */
 template <typename Derived>
 std::enable_if_t<
-    std::is_same<typename Derived::Scalar, AUTODIFF_VAR_TYPE>::value,
-    Eigen::Matrix<AUTODIFF_VAR_TYPE, 6, 6>>
+    std::is_same<typename Derived::Scalar, autodiff::real1st>::value,
+    Eigen::Matrix<autodiff::real1st, 6, 6>>
 vec2jacinv(const Eigen::MatrixBase<Derived>& xi_ba, unsigned int numTerms = 0) {
   assert(xi_ba.rows() == 6 && xi_ba.cols() == 1);
   if (numTerms == 0) {
@@ -685,4 +679,5 @@ vec2jacinv(const Eigen::MatrixBase<Derived>& xi_ba, unsigned int numTerms = 0) {
 
 }  // namespace se3
 }  // namespace lgmath
+#endif
 #endif

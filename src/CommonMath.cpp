@@ -10,11 +10,6 @@
 
 #include <math.h>
 
-#if USE_AUTODIFF
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-#endif
-
 namespace lgmath {
 namespace common {
 
@@ -84,14 +79,22 @@ bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
 }
 
 #if USE_AUTODIFF
-bool nearEqual(AUTODIFF_VAR_TYPE a, AUTODIFF_VAR_TYPE b, double tol) {
-  return std::fabs(a.val() - b.val()) <= tol;
+#ifndef AUTODIFF_USE_BACKWARD
+#include <autodiff/forward/real.hpp>
+#include <autodiff/forward/real/eigen.hpp>
+
+bool nearEqual(autodiff::real1st a, autodiff::real1st b, double tol) {
+  return std::fabs(double(a) - double(b)) <= tol;
 }
 
-bool nearEqualAngle(AUTODIFF_VAR_TYPE radA, AUTODIFF_VAR_TYPE radB,
+bool nearEqualAngle(autodiff::real1st radA, autodiff::real1st radB,
                     double tol) {
-  return common::nearEqual(common::angleMod(radA.val() - radB.val()), 0.0, tol);
+  return common::nearEqual(common::angleMod(double(radA) - double(radB)), 0.0, tol);
 }
+#else 
+#include <autodiff/reverse/var.hpp>
+#include <autodiff/reverse/var/eigen.hpp>
+#endif
 #endif
 
 }  // namespace common

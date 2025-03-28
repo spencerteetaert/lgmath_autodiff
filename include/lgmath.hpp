@@ -28,6 +28,11 @@
 
 // Autodiff 
 #if USE_AUTODIFF
-#include <lgmath/se3/OperationsAutodiff.hpp>
-#include <lgmath/so3/OperationsAutodiff.hpp>
+#if AUTODIFF_USE_BACKWARD
+#include <lgmath/se3/OperationsAutodiffBackward.hpp>
+#include <lgmath/so3/OperationsAutodiffBackward.hpp>
+#else
+#include <lgmath/se3/OperationsAutodiffForward.hpp>
+#include <lgmath/so3/OperationsAutodiffForward.hpp>
+#endif
 #endif
