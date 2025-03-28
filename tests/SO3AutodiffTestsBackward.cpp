@@ -8,7 +8,8 @@
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef AUTODIFF_USE_BACKWARD
+#if USE_AUTODIFF
+#if USE_AUTODIFF_BACKWARD
 #include <gtest/gtest.h>
 
 #include <math.h>
@@ -376,4 +377,5 @@ int main(int argc, char **argv) {
   return RUN_ALL_TESTS();
 }
 
+#endif
 #endif

@@ -9,8 +9,8 @@
  */
 #pragma once
 
-#if USE_AUTODIFF
-#if AUTODIFF_USE_BACKWARD
+#ifdef USE_AUTODIFF
+#ifdef USE_AUTODIFF_BACKWARD
 
 #include <Eigen/Core>
 #include <Eigen/Dense>

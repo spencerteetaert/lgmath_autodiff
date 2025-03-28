@@ -27,8 +27,8 @@
 #include <lgmath/r3/Types.hpp>
 
 // Autodiff 
-#if USE_AUTODIFF
-#if AUTODIFF_USE_BACKWARD
+#ifdef USE_AUTODIFF
+#ifdef USE_AUTODIFF_BACKWARD
 #include <lgmath/se3/OperationsAutodiffBackward.hpp>
 #include <lgmath/so3/OperationsAutodiffBackward.hpp>
 #else

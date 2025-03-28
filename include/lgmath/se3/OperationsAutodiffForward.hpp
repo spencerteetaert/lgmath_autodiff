@@ -9,9 +9,8 @@
  */
 #pragma once
 
-#if USE_AUTODIFF
-#if AUTODIFF_USE_BACKWARD
-#else 
+#ifdef USE_AUTODIFF
+#ifndef USE_AUTODIFF_BACKWARD 
 
 #include <lgmath/CommonMath.hpp>
 #include <lgmath/so3/OperationsAutodiffForward.hpp>

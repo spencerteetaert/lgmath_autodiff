@@ -78,24 +78,5 @@ bool nearEqualLieAlg(Eigen::Matrix<double, 6, 1> vec1,
   return near;
 }
 
-#if USE_AUTODIFF
-#ifndef AUTODIFF_USE_BACKWARD
-#include <autodiff/forward/real.hpp>
-#include <autodiff/forward/real/eigen.hpp>
-
-bool nearEqual(autodiff::real1st a, autodiff::real1st b, double tol) {
-  return std::fabs(double(a) - double(b)) <= tol;
-}
-
-bool nearEqualAngle(autodiff::real1st radA, autodiff::real1st radB,
-                    double tol) {
-  return common::nearEqual(common::angleMod(double(radA) - double(radB)), 0.0, tol);
-}
-#else 
-#include <autodiff/reverse/var.hpp>
-#include <autodiff/reverse/var/eigen.hpp>
-#endif
-#endif
-
 }  // namespace common
 }  // namespace lgmath

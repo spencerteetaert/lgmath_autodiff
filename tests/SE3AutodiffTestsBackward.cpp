@@ -7,8 +7,8 @@
 ///
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef AUTODIFF_USE_BACKWARD
+#if USE_AUTODIFF
+#if USE_AUTODIFF_BACKWARD
 #include <gtest/gtest.h>
 
 #include <math.h>
@@ -452,19 +452,11 @@ TEST(LGMathAutodiff, TestSE3Derivative1) {
   std::cout << varpis.at(0) << std::endl;
 
   for (unsigned i = 0; i < numTests; i++) {
-#ifdef AUTODIFF_USE_BACKWARD
     Eigen::Vector<var, 6> u = func(xis.at(i), varpis.at(i));
     Eigen::Matrix<var, 6, 6> func_jacobian;
     for (int n = 0; n < 6; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), varpis.at(i));
     }
-#else
-    Eigen::Vector<var, 6> F;
-
-    auto func_jacobian =
-        autodiff::jacobian(func, autodiff::wrt(varpis.at(i)),
-                           autodiff::at(xis.at(i), varpis.at(i)), F);
-#endif
     auto expected = lgmath::se3::vec2jac(xis.at(i));
 
     std::cout << "expected: " << expected << std::endl;
@@ -589,17 +581,11 @@ TEST(LGMathAutodiff, TestSE3Derivative2) {
   };
 
   for (unsigned i = 0; i < numTests; i++) {
-#ifdef AUTODIFF_USE_BACKWARD
     Eigen::Vector<var, 6> u = func(xis.at(i));
     Eigen::Matrix<var, 6, 6> func_jacobian;
     for (int n = 0; n < 6; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), xis.at(i));
     }
-#else
-    Eigen::Vector<var, 6> F;
-    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
-                                            autodiff::at(xis.at(i)), F);
-#endif
     Eigen::Matrix<double, 6, 6> identityMat =
         Eigen::Matrix<double, 6, 6>::Identity(6, 6);
     Eigen::Matrix<double, 6, 6> zeroMat =
@@ -643,18 +629,11 @@ TEST(LGMathAutodiff, TestSE3Derivative3) {
   };
 
   for (unsigned i = 0; i < numTests; i++) {
-#ifdef AUTODIFF_USE_BACKWARD
     Eigen::Vector<var, 6> u = func(xis.at(i));
     Eigen::Matrix<var, 4, 6> func_jacobian;
     for (int n = 0; n < 4; ++n) {
       func_jacobian.row(n) = autodiff::gradient(u(n), xis.at(i));
     }
-#else
-    Eigen::Vector<var, 4> F;
-    auto func_jacobian = autodiff::jacobian(func, autodiff::wrt(xis.at(i)),
-                                            autodiff::at(xis.at(i)), F);
-
-#endif
 
     Eigen::Matrix<double, 4, 4> T =
         lgmath::se3::vec2tran(xis.at(i).cast<double>());
@@ -683,4 +662,5 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+#endif
 #endif

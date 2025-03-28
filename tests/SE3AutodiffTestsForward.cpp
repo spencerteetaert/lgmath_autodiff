@@ -8,7 +8,9 @@
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef AUTODIFF_USE_BACKWARD
+#if USE_AUTODIFF
+#if USE_AUTODIFF_BACKWARD
+#else
 #include <gtest/gtest.h>
 
 #include <math.h>
@@ -451,19 +453,10 @@ TEST(LGMathAutodiff, TestSE3Derivative1) {
   std::cout << varpis.at(0) << std::endl;
 
   for (unsigned i = 0; i < numTests; i++) {
-#ifdef AUTODIFF_USE_BACKWARD
-    Eigen::Vector<autodiff::real1st, 6> u = func(xis.at(i), varpis.at(i));
-    Eigen::Matrix<autodiff::real1st, 6, 6> func_jacobian;
-    for (int n = 0; n < 6; ++n) {
-      func_jacobian.row(n) = autodiff::gradient(u(n), varpis.at(i));
-    }
-#else
     Eigen::Vector<autodiff::real1st, 6> F;
-
     auto func_jacobian =
         autodiff::jacobian(func, autodiff::wrt(varpis.at(i)),
                            autodiff::at(xis.at(i), varpis.at(i)), F);
-#endif
     auto expected = lgmath::se3::vec2jac(xis.at(i));
 
     std::cout << "expected: " << expected << std::endl;
@@ -665,4 +658,5 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+#endif
 #endif

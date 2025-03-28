@@ -8,7 +8,9 @@
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef AUTODIFF_USE_BACKWARD
+#if USE_AUTODIFF
+#if USE_AUTODIFF_BACKWARD
+#else
 #include <gtest/gtest.h>
 
 #include <math.h>
@@ -374,4 +376,5 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+#endif
 #endif

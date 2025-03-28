@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 project(lgmath)
 
 option(USE_AMENT "Use ament_cmake to build lgmath for ROS2." OFF)
-option(USE_AUTODIFF "Include autodiff library for automatic differentiation." ON)
-option(AUTODIFF_USE_BACKWARD "Use backward mode in autodiff. Not currently supported" OFF)
 
 # Compiler setup
 set(CMAKE_CXX_STANDARD 17)
@@ -30,17 +28,18 @@ if(NOT USE_AMENT)
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
   )
+
   if(USE_AUTODIFF)
     message(STATUS "Building with automatic differentiation support.")
-    add_definitions(-DUSE_AUTODIFF)
-    if(AUTODIFF_USE_BACKWARD)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USE_AUTODIFF)
+    if(USE_AUTODIFF_BACKWARD)
+      target_compile_definitions(${PROJECT_NAME} PRIVATE USE_AUTODIFF_BACKWARD)
       message(FATAL_ERROR "Backward mode is not yet supported.")
-      add_definitions(-DAUTODIFF_USE_BACKWARD)
     else()
       message(STATUS "Using forward mode autodiff.")
     endif()
     find_package(autodiff REQUIRED)
-    target_link_libraries(${PROJECT_NAME} autodiff::autodiff)
+    target_link_libraries(${PROJECT_NAME} INTERFACE autodiff::autodiff)
   endif()
 
   # Install
@@ -126,7 +125,7 @@ if(NOT USE_AMENT)
     gtest_discover_tests(transform_with_covariance_tests)
 
     if(USE_AUTODIFF)
-      if(AUTODIFF_USE_BACKWARD)
+      if(USE_AUTODIFF_BACKWARD)
         add_executable(so3_tests_autodiff_backward tests/SO3AutodiffTestsBackward.cpp)
         target_link_libraries(so3_tests_autodiff_backward ${PROJECT_NAME} GTest::gtest_main)
         add_executable(se3_tests_autodiff_backward tests/SE3AutodiffTestsBackward.cpp)
