@@ -1,6 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
 /// \file SE3AutodiffTests.cpp
-/// \brief Unit tests for the autodiff implementation of the SE3 Lie Group math in forward mode. 
+/// \brief Unit tests for the autodiff implementation of the SE3 Lie Group math
+/// in forward mode.
 ///
 /// \author Spencer Teetaert
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,13 +38,13 @@ TEST(LGMathAutodiff, Test4x4HatFunction) {
   const unsigned numTests = 20;
 
   // Add vectors to be tested - random
-  std::vector<Eigen::Matrix<double, 6, 1>> trueVecs;
+  std::vector<Eigen::Matrix<double, 6, 1> > trueVecs;
   for (unsigned i = 0; i < numTests; i++) {
     trueVecs.push_back(Eigen::Matrix<double, 6, 1>::Random());
   }
 
   // Setup truth matrices
-  std::vector<Eigen::Matrix<double, 4, 4>> trueMats;
+  std::vector<Eigen::Matrix<double, 4, 4> > trueMats;
   for (unsigned i = 0; i < numTests; i++) {
     Eigen::Matrix<double, 4, 4> mat = lgmath::se3::hat(trueVecs.at(i));
     trueMats.push_back(mat);
@@ -73,13 +74,13 @@ TEST(LGMathAutodiff, TestCurlyHatFunction) {
   const unsigned numTests = 20;
 
   // Add vectors to be tested - random
-  std::vector<Eigen::Matrix<double, 6, 1>> trueVecs;
+  std::vector<Eigen::Matrix<double, 6, 1> > trueVecs;
   for (unsigned i = 0; i < numTests; i++) {
     trueVecs.push_back(Eigen::Matrix<double, 6, 1>::Random());
   }
 
   // Setup truth matrices
-  std::vector<Eigen::Matrix<double, 6, 6>> trueMats;
+  std::vector<Eigen::Matrix<double, 6, 6> > trueMats;
   for (unsigned i = 0; i < numTests; i++) {
     Eigen::Matrix<double, 6, 6> mat = lgmath::se3::curlyhat(trueVecs.at(i));
     trueMats.push_back(mat);
@@ -108,13 +109,13 @@ TEST(LGMathAutodiff, TestPointTo4x6MatrixFunction) {
   const unsigned numTests = 20;
 
   // Add vectors to be tested - random
-  std::vector<Eigen::Matrix<double, 4, 1>> trueVecs;
+  std::vector<Eigen::Matrix<double, 4, 1> > trueVecs;
   for (unsigned i = 0; i < numTests; i++) {
     trueVecs.push_back(Eigen::Matrix<double, 4, 1>::Random());
   }
 
   // Setup truth matrices
-  std::vector<Eigen::Matrix<double, 4, 6>> trueMats;
+  std::vector<Eigen::Matrix<double, 4, 6> > trueMats;
   for (unsigned i = 0; i < numTests; i++) {
     Eigen::Matrix<double, 4, 6> mat =
         lgmath::se3::point2fs(trueVecs.at(i).head<3>(), trueVecs.at(i)[3]);
@@ -142,13 +143,13 @@ TEST(LGMathAutodiff, TestPointTo6x4MatrixFunction) {
   const unsigned numTests = 20;
 
   // Add vectors to be tested - random
-  std::vector<Eigen::Matrix<double, 4, 1>> trueVecs;
+  std::vector<Eigen::Matrix<double, 4, 1> > trueVecs;
   for (unsigned i = 0; i < numTests; i++) {
     trueVecs.push_back(Eigen::Matrix<double, 4, 1>::Random());
   }
 
   // Setup truth matrices
-  std::vector<Eigen::Matrix<double, 6, 4>> trueMats;
+  std::vector<Eigen::Matrix<double, 6, 4> > trueMats;
   for (unsigned i = 0; i < numTests; i++) {
     Eigen::Matrix<double, 6, 4> mat =
         lgmath::se3::point2sf(trueVecs.at(i).head<3>(), trueVecs.at(i)[3]);
@@ -173,8 +174,8 @@ TEST(LGMathAutodiff, TestPointTo6x4MatrixFunction) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
   // Add vectors to be tested
-  std::vector<Eigen::Vector<autodiff::real1st, 6>> trueVecs;
-  std::vector<Eigen::Matrix<double, 4, 4>> trueMats;
+  std::vector<Eigen::Vector<autodiff::real1st, 6> > trueVecs;
+  std::vector<Eigen::Matrix<double, 4, 4> > trueMats;
   Eigen::Vector<autodiff::real1st, 6> temp(6);
   temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
@@ -268,7 +269,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2TranAndTran2Vec) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
   // Add vectors to be tested
-  std::vector<Eigen::Vector<autodiff::real1st, 6>> trueVecs;
+  std::vector<Eigen::Vector<autodiff::real1st, 6> > trueVecs;
   Eigen::Vector<autodiff::real1st, 6> temp(6);
   temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
@@ -369,7 +370,7 @@ TEST(LGMathAutodiff, CompareSE3Vec2JacAndVec2JacInv) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
   // Add vectors to be tested
-  std::vector<Eigen::Vector<autodiff::real1st, 6>> trueVecs;
+  std::vector<Eigen::Vector<autodiff::real1st, 6> > trueVecs;
   Eigen::Vector<autodiff::real1st, 6> temp(6);
   temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   trueVecs.push_back(temp);
@@ -425,16 +426,44 @@ TEST(LGMathAutodiff, TestIdentityAdTvEqualIPlusCurlyHatvTimesJv) {
 /// \brief General test of differentiability. f = J(xi) varpi, tests df/dvarpi
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestSE3Derivative1) {
-  const unsigned numTests = 20;
+  std::vector<Eigen::Vector<autodiff::real1st, 6> > xis;
+  Eigen::Matrix<autodiff::real1st, 6, 1> temp;
+  temp << 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, lgmath::constants::PI;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, -lgmath::constants::PI, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, -lgmath::constants::PI, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, -lgmath::constants::PI;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 1.0, 0.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 1.0, 0.0, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.5 * lgmath::constants::PI, 0.0, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.5 * lgmath::constants::PI, 0.0;
+  xis.push_back(temp);
+  temp << 0.0, 0.0, 0.0, 0.0, 0.0, 0.5 * lgmath::constants::PI;
+  xis.push_back(temp);
 
-  std::vector<Eigen::Vector<autodiff::real1st, 6>> xis;
-  for (unsigned i = 0; i < numTests; i++) {
+  const unsigned int numrand = 20;
+  for (unsigned i = 0; i < numrand; i++) {
     Eigen::Vector<autodiff::real1st, 6> rand(6);
     rand.setRandom();
     xis.push_back(rand);
   }
 
-  std::vector<Eigen::Vector<autodiff::real1st, 6>> varpis;
+  const unsigned int numTests = xis.size();
+  std::vector<Eigen::Vector<autodiff::real1st, 6> > varpis;
   for (unsigned i = 0; i < numTests; i++) {
     Eigen::Vector<autodiff::real1st, 6> rand(6);
     rand.setRandom();
@@ -466,9 +495,9 @@ TEST(LGMathAutodiff, TestSE3Derivative1) {
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief Test of derivative of vec2tran
 /////////////////////////////////////////////////////////////////////////////////////////////
-TEST(LGMathAutodiff, TESTVec2TranDerivative) {
-  std::vector<Eigen::Matrix<autodiff::real1st, 6, 1>> xis;
-  std::vector<Eigen::Matrix<autodiff::real1st, 16, 6>> expectedMats;
+TEST(LGMathAutodiff, TestVec2TranDerivative) {
+  std::vector<Eigen::Matrix<autodiff::real1st, 6, 1> > xis;
+  std::vector<Eigen::Matrix<autodiff::real1st, 16, 6> > expectedMats;
   Eigen::Matrix<autodiff::real1st, 6, 1> temp;
   Eigen::Matrix<autodiff::real1st, 6, 16> tempMat;
   temp << 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0, 0.0;
@@ -511,7 +540,7 @@ TEST(LGMathAutodiff, TESTVec2TranDerivative) {
   auto func = [](const Eigen::Vector<autodiff::real1st, 6> &xi)
       -> Eigen::Vector<autodiff::real1st, 16> {
     auto result = lgmath::se3::vec2tran(xi);
-    Eigen::Map<const Eigen::Matrix<autodiff::real1st, 16, 1>> resultMap(
+    Eigen::Map<const Eigen::Matrix<autodiff::real1st, 16, 1> > resultMap(
         result.data(), result.size());
 
     return resultMap;
@@ -537,7 +566,7 @@ TEST(LGMathAutodiff, TESTVec2TranDerivative) {
 /// tran2vec(vec2tran(xi)), tests df/dxi
 /////////////////////////////////////////////////////////////////////////////////////////////
 TEST(LGMathAutodiff, TestSE3Derivative2) {
-  std::vector<Eigen::Matrix<autodiff::real1st, 6, 1>> xis;
+  std::vector<Eigen::Matrix<autodiff::real1st, 6, 1> > xis;
   Eigen::Matrix<autodiff::real1st, 6, 1> temp;
   temp << 0.0, 0.0, 0.0, lgmath::constants::PI, 0.0, 0.0;
   xis.push_back(temp);
@@ -609,7 +638,7 @@ TEST(LGMathAutodiff, TestSE3Derivative2) {
 TEST(LGMathAutodiff, TestSE3Derivative3) {
   const unsigned numTests = 20;
 
-  std::vector<Eigen::Vector<autodiff::real1st, 6>> xis;
+  std::vector<Eigen::Vector<autodiff::real1st, 6> > xis;
   for (unsigned i = 0; i < numTests; i++) {
     Eigen::Vector<autodiff::real1st, 6> rand(6);
     rand.setRandom();

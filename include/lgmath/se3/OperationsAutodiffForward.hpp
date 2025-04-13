@@ -10,7 +10,7 @@
 #pragma once
 
 #ifdef USE_AUTODIFF
-#ifndef USE_AUTODIFF_BACKWARD 
+#ifndef USE_AUTODIFF_BACKWARD
 
 #include <lgmath/CommonMath.hpp>
 #include <lgmath/so3/OperationsAutodiffForward.hpp>
@@ -209,7 +209,9 @@ vec2tran_analytical(const Eigen::MatrixBase<Derived>& rho_ba,
     // If angle is very small, rotation is Identity
     out_C_ab = Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
                so3::hat(aaxis_ba);
-    out_r_ba_ina = out_C_ab * rho_ba;
+    out_r_ba_ina = (Eigen::Matrix<typename Derived::Scalar, 3, 3>::Identity() +
+                    0.5 * so3::hat(aaxis_ba)) *
+                   rho_ba;  // Should be jac approx not C
   } else {
     // Normal analytical solution
     Eigen::Matrix<typename Derived::Scalar, 3, 3> J_ab;
